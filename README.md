@@ -1,0 +1,1 @@
+# plugins-wp-edit-password-protected
