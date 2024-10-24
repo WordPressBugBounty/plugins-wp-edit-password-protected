@@ -558,7 +558,7 @@ new \Kirki\Field\Radio_Buttonset(
     [
         'option_type' => 'option',
         'settings'    => 'wpe_adpage_header_show',
-        'label' => __('Show Page Header', 'ephemeris'),
+        'label' => __('Show Page Header', 'wp-edit-password-protected'),
         'section'     => 'wpe_adpage_main',
         'default'     => wppass_adminpage_option_default($pp_page_head),
         'choices'     => [

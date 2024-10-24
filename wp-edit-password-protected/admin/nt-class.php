@@ -135,91 +135,144 @@ new WpSpaceNtClass();
 if (!function_exists('spacehide_go_me')) :
     function spacehide_go_me()
     {
+        // Check if we're on the themes.php page
         global $pagenow;
-        if ($pagenow != 'themes.php') {
+        if ($pagenow !== 'themes.php') {
             return;
         }
 
+        // Define variables
         $class = 'notice notice-success is-dismissible';
-        $url1 = esc_url('https://wpthemespace.com/product-category/pro-theme/');
+        $url = 'https://wpthemespace.com/product-category/pro-theme/';
 
-        $message = __('<strong><span style="color:red;">Recommended WordPress Theme for you:</span>  <span style="color:green"> If you find a Secure, SEO friendly, full functional premium WordPress theme for your site then </span>  </strong>', 'wp-edit-password-protected');
+        // Prepare the message
+        $message = sprintf(
+            /* translators: 1: Opening strong and span tags, 2: Closing strong tag */
+            __('%1$sRecommended WordPress Theme for you: <span style="color:green">If you find a Secure, SEO friendly, full functional premium WordPress theme for your site then</span>%2$s', 'wp-edit-password-protected'),
+            '<strong><span style="color:red;">',
+            '</strong>'
+        );
 
-        printf('<div class="%1$s" style="padding:10px 15px 20px;"><p>%2$s <a href="%3$s" target="_blank">' . __('see here', 'wp-edit-password-protected') . '</a>.</p><a target="_blank" class="button button-danger" href="%3$s" style="margin-right:10px">' . __('View WordPress Theme', 'wp-edit-password-protected') . '</a></div>', esc_attr($class), wp_kses_post($message), $url1);
+        // Prepare the link text
+        $see_here = __('see here', 'wp-edit-password-protected');
+        $view_theme = __('View WordPress Theme', 'wp-edit-password-protected');
+
+        // Output the notice
+?>
+        <div class="<?php echo esc_attr($class); ?>" style="padding:10px 15px 20px;">
+            <p>
+                <?php echo wp_kses_post($message); ?>
+                <a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo esc_html($see_here); ?></a>.
+            </p>
+            <a target="_blank"
+                class="button button-danger"
+                href="<?php echo esc_url($url); ?>"
+                style="margin-right:10px">
+                <?php echo esc_html($view_theme); ?>
+            </a>
+        </div>
+<?php
     }
     add_action('admin_notices', 'spacehide_go_me');
 endif;
 
-/**
- * Pro notice text
- *
- */
-function wp_edit_pass_rev_want()
+
+function wpepop_admin_notice()
 {
+    $service_url = 'https://wpthemespace.com/custom-wordpress-services';
+    $notices = array(
 
-?>
-    <div class="mgadin-hero">
-        <div class="mge-info-content">
-            <div class="mge-info-hello">
-                <?php
-                $current_user = wp_get_current_user();
-                $rev_link = 'https://wpthemespace.com/offers';
+        sprintf(
+            '<div class="notice solution-notice">
+                <h2>%s</h2>
+                <div class="tagline">%s</div>
+                <p>%s</p>
+                <p>%s</p>
+                <p><span class="highlight">%s</span></p>
+                <a target="_blank" href="%s" class="solution-button">%s</a>
+                <button class="button button-info wpepop-dismiss">%s</button>
+            </div>',
+            esc_html__('Need WordPress Expertise? We\'re Here to Help!', 'text-domain'),
+            esc_html__('Custom Development • Elementor Specialists • Technical Support • Customization', 'text-domain'),
+            esc_html__('Whether you need a complete website built from scratch, custom Elementor widgets, or technical issues resolved, our team is ready to assist with proven WordPress solutions.', 'text-domain'),
+            esc_html__('Choose what works best for you: Project-based development, monthly maintenance, or yearly partnership - we\'re flexible to your needs.', 'text-domain'),
+            esc_html__('Try our services risk-free with a complimentary test project!', 'text-domain'),
+            esc_url($service_url),
+            esc_html__('Let\'s Discuss Your Project →', 'text-domain'),
+            esc_html__('No Thanks', 'wp-edit-password-protected')
 
-                esc_html_e('🎉 Exclusive Sale: Up to 70% Off! 🌟, ', 'wp-edit-password-protected');
-                // echo esc_html($current_user->display_name);
-                ?>
+        ),
 
-                <?php // esc_html_e('👋🏻', 'wp-edit-password-protected'); 
-                ?>
-            </div>
-            <div class="mge-info-desc">
-                <div><?php echo esc_html('Our limited-time offer is available on all WPThemeSpace themes and plugins. Explore our amazing bundles and find incredible deals on our products. Don\'t miss out – this special promotion is only available for a short time! Visit the Offer Page.', 'wp-edit-password-protected'); ?> <a target="_blank" href="<?php echo esc_url($rev_link); ?>"><?php esc_html_e('Visit the Offer Page', 'wp-edit-password-protected'); ?></a></div>
-                <div class="mge-offer"><?php echo esc_html('Limited Time Offer! Hurry up! ', 'wp-edit-password-protected'); ?></div>
-            </div>
-            <div class="mge-info-actions">
-                <a href="<?php echo esc_url($rev_link); ?>" target="_blank" class="button button-primary upgrade-btn">
-                    <?php esc_html_e('🎁 Explore Offer Now 🚀', 'wp-edit-password-protected'); ?>
-                </a>
-                <!--   <button class="button button-info wpepop-dedrev"><?php // esc_html_e('Already Did', 'wp-edit-password-protected');  
-                                                                        ?></button> -->
-                <button class="button button-info wpepop-dismiss"><?php esc_html_e('No Thanks', 'wp-edit-password-protected'); ?></button>
-            </div>
+        // Notice 2 - Technical Solutions
+        sprintf(
+            '<div class="notice solution-notice ">
+                <h2>%s</h2>
+                <div class="tagline">%s</div>
+                <p>%s</p>
+                <p>%s</p>
+                <p><span class="highlight">%s</span></p>
+                <a target="_blank" href="%s" class="solution-button">%s</a>
+                <button class="button button-info wpepop-dismiss">%s</button>
+            </div>',
+            esc_html__('Looking for WordPress Solutions? We\'ve Got You Covered!', 'text-domain'),
+            esc_html__('Expert Development • Custom Features • Quick Problem Solving • $10 or $1000', 'text-domain'),
+            esc_html__('From turning designs into pixel-perfect WordPress websites to developing custom Elementor widgets, we deliver solutions that make your website stand out.', 'text-domain'),
+            esc_html__('Our experienced team is ready to tackle any WordPress challenge with proven expertise and dedication to quality.', 'text-domain'),
+            esc_html__('Start with a free test project and see the difference we can make!', 'text-domain'),
+            esc_url($service_url),
+            esc_html__('Get Started Today →', 'text-domain'),
+            esc_html__('No Thanks', 'wp-edit-password-protected')
+        ),
 
-        </div>
+        // Notice 3 - Partnership Approach
+        sprintf(
+            '<div class="notice solution-notice">
+                <h2>%s</h2>
+                <div class="tagline">%s</div>
+                <p>%s</p>
+                <p>%s</p>
+                <p><span class="highlight">%s</span></p>
+                <a target="_blank" href="%s" class="solution-button">%s</a>
+                <button class="button button-info wpepop-dismiss">%s</button>
+            </div>',
+            esc_html__('Want a Reliable WordPress Partner? Let\'s Connect!', 'text-domain'),
+            esc_html__('Custom Development • Ongoing Support • Long-term Partnership', 'text-domain'),
+            esc_html__('Partner with a team that understands your WordPress needs. We specialize in custom development, Elementor solutions, and technical support that helps your business grow.', 'text-domain'),
+            esc_html__('Flexible engagement options available: Work with us on a per-project basis, monthly retainer, or long-term partnership.', 'text-domain'),
+            esc_html__('Special offer: Test our capabilities with a free trial project!', 'text-domain'),
+            esc_url($service_url),
+            esc_html__('Start the Conversation →', 'text-domain'),
+            esc_html__('No Thanks', 'wp-edit-password-protected')
 
-    </div>
-<?php
+        )
+    );
+
+    return $notices[array_rand($notices)];
 }
+add_action('admin_notices', 'wpepop_admin_notice');
+
 
 
 //Admin notice 
 function wp_edit_pass_new_optins_texts()
 {
     global $pagenow;
-    /*  if (get_option('wpeditpass_offadded')) {
-        return;
-    } */
-    $hide_date = get_option('wpeditpass_info_text');
+
+    $hide_date = get_option('wpeditpass_info_randtext');
     if (!empty($hide_date)) {
         $clickhide = round((time() - strtotime($hide_date)) / 24 / 60 / 60);
         if ($clickhide < 25) {
             return;
         }
     }
-?>
-    <div class="mgadin-notice notice notice-success mgadin-theme-dashboard mgadin-theme-dashboard-notice mge is-dismissible meis-dismissible">
-        <?php wp_edit_pass_rev_want(); ?>
-    </div>
-<?php
-
-
+    echo wp_kses_post(wpepop_admin_notice());
 }
 add_action('admin_notices', 'wp_edit_pass_new_optins_texts');
 
 function wp_edit_pass_new_optins_texts_init()
 {
     if (isset($_GET['dismissed']) && $_GET['dismissed'] == 1) {
-        update_option('wpeditpass_info_text', current_time('mysql'));
+        update_option('wpeditpass_info_randtext', current_time('mysql'));
     }
     if (isset($_GET['revadded']) && $_GET['revadded'] == 1) {
         update_option('wpeditpass_offadded', 1);

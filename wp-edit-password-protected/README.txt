@@ -1,18 +1,18 @@
-=== Wp Edit Password Protected - Create Member/User Only Page & Design Password Protected Form ===
+=== Wp Edit Password Protected - Create Password Protect Pages & Design Password Protected Form ===
 Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
-Tags: login form, member only page, Password, Protected, user only page
+Tags: login form, member only page, Password, Protected page, user only page
 Requires at least: 4.5
 Tested up to: 6.6
-Stable tag: 1.2.8
+Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-
+Create easily Password protected page or posts in your WordPress website.
 
 == Description ==
-<h4>Create member/user only page with custom login form or change/edit Password Protected form easily by this plugin.</h4>
-Do you have a WordPress site that you want to protect with a password? WP Edit Password Protected is a WordPress plugin that makes it easy to edit password-protected form with login form and add extra text & awesome design in password protect form. You can create member/user only pages and posts, change the message displayed on the password form and add social media icons with live editing options and design.
+<h3>Create Password Protect with custom login form or change/edit Password Protected form easily by this plugin.</h3>
+Do you have a WordPress site that you want to password protect any page or post? WP Edit Password Protected is a WordPress plugin that makes it easy to password protect any page or post with login form and add extra text & awesome design in password protect form. You can create member/user only pages and posts, change the message displayed on the password form and add social media icons with live editing options and design.
 A wordpress plugin for simple way to create admin or member only page by member only page template and change the message displayed, add social icons and change password form on Password Protected posts/pages.
 <p>Most of the people want to create member only page and want to change the message displayed on Password Protected posts/pages but they don't get any option. Now you can create member only page or change Password Protected posts/pages message by this plugin. The plugin very easy to use and has lots of options.</p>
 #### How to create member/user only page with login form
@@ -195,4 +195,3 @@ Fix - One php error fix.
 
 = 1.0.0 =
 Released version
-
