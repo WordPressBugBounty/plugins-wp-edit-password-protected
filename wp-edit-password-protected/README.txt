@@ -3,7 +3,7 @@ Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
 Tags: login form, member only page, Password, Protected page, user only page
 Requires at least: 4.5
-Tested up to: 6.6
+Tested up to: 6.7
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -121,6 +121,10 @@ Yes you can change default form style
 
 
 == Changelog ==
+
+= 1.2.10 =
+ * Fixed  Function _load_textdomain_just_in_time was called incorrectly Error
+ * update package
 
 = 1.2.6 =
  * updated composer package
