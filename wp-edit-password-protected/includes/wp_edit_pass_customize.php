@@ -213,7 +213,16 @@ class wpEditPasswordOutput
 
 
             ?>
-                    <a target=" _blank" href="<?php echo esc_url($link); ?>"><i class="icon-wpass-<?php echo esc_attr($icon_class); ?>"></i></a>
+                    <?php if ($icon_class == 'twitter'): ?>
+                        <a target=" _blank" href="<?php echo esc_url($link); ?>">
+                            <svg class="wpp-xicon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                                <path fill="white" d="M16.64 3H20.89L13.9 10.92L22 21H15.95L10.98 14.77L5.29 21H1.02L8.46 12.5L0.67 3H6.89L11.38 8.64L16.64 3ZM15.61 18.89H17.44L6.13 4.03H4.15L15.61 18.89Z" />
+                            </svg>
+                        </a>
+                    <?php else: ?>
+                        <a target=" _blank" href="<?php echo esc_url($link); ?>"><i class="icon-wpass-<?php echo esc_attr($icon_class); ?>"></i></a>
+
+                    <?php endif; ?>
             <?php
                 }
             endforeach;

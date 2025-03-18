@@ -122,6 +122,11 @@ Yes you can change default form style
 
 == Changelog ==
 
+= 1.2.11 =
+ * added install date for big update
+ * twitter icons change to X icon
+
+
 = 1.2.10 =
  * Fixed  Function _load_textdomain_just_in_time was called incorrectly Error
  * update package

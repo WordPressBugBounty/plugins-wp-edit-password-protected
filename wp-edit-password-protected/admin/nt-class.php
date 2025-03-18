@@ -277,5 +277,8 @@ function wp_edit_pass_new_optins_texts_init()
     if (isset($_GET['revadded']) && $_GET['revadded'] == 1) {
         update_option('wpeditpass_offadded', 1);
     }
+    if (!get_option('wp_edit_pass_install_date')) {
+        update_option('wp_edit_pass_install_date', current_time('mysql'));
+    }
 }
 add_action('init', 'wp_edit_pass_new_optins_texts_init');
