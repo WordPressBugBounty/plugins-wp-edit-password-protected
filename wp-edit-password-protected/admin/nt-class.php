@@ -171,7 +171,7 @@ if (!function_exists('spacehide_go_me')) :
                 <?php echo esc_html($view_theme); ?>
             </a>
         </div>
-<?php
+    <?php
     }
     add_action('admin_notices', 'spacehide_go_me');
 endif;
@@ -282,3 +282,35 @@ function wp_edit_pass_new_optins_texts_init()
     }
 }
 add_action('init', 'wp_edit_pass_new_optins_texts_init');
+
+// Add update notice
+function wpepp_update_notice()
+{
+    // Check if notice was already dismissed
+    if (get_option('wpepp_update_1_3_dismissed')) {
+        return;
+    }
+
+    // Only show to admins
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    ?>
+    <div class="notice notice-info is-dismissible wpepp-update-notice">
+        <h3><?php esc_html_e('WP Edit Password Protected - New Features!', 'wp-edit-password-protected'); ?></h3>
+        <p>
+            <?php esc_html_e('Version 1.2.12 includes new conditional display features for post & page:', 'wp-edit-password-protected'); ?>
+        </p>
+        <ul>
+            <li><?php esc_html_e('✨ Show/hide content for logged-in users', 'wp-edit-password-protected'); ?></li>
+            <li><?php esc_html_e('✨ Show/hide content for logged-out users', 'wp-edit-password-protected'); ?></li>
+            <li><?php esc_html_e('✨ Control title and featured image visibility', 'wp-edit-password-protected'); ?></li>
+        </ul>
+        <button type="button" class="notice-dismiss wpepp-dismiss-update">
+            <span class="screen-reader-text"><?php esc_html_e('Dismiss this notice.', 'wp-edit-password-protected'); ?></span>
+        </button>
+    </div>
+<?php
+}
+add_action('admin_notices', 'wpepp_update_notice');

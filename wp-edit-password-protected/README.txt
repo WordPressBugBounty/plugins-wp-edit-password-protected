@@ -3,16 +3,24 @@ Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
 Tags: login form, member only page, Password, Protected page, user only page
 Requires at least: 4.5
-Tested up to: 6.7
+Tested up to: 6.8
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Create easily Password protected page or posts in your WordPress website.
+Create easily Password protected page or posts in your WordPress website with conditional display options.
 
 == Description ==
 <h3>Create Password Protect with custom login form or change/edit Password Protected form easily by this plugin.</h3>
 Do you have a WordPress site that you want to password protect any page or post? WP Edit Password Protected is a WordPress plugin that makes it easy to password protect any page or post with login form and add extra text & awesome design in password protect form. You can create member/user only pages and posts, change the message displayed on the password form and add social media icons with live editing options and design.
+
+<h4>NEW: Conditional Display Feature</h4>
+Now you can control when your protected content is shown or hidden based on various conditions:
+<ul>
+    <li>Show/hide content for logout user</li>
+    <li>Show/hide content for login user</li>
+</ul>
+
 A wordpress plugin for simple way to create admin or member only page by member only page template and change the message displayed, add social icons and change password form on Password Protected posts/pages.
 <p>Most of the people want to create member only page and want to change the message displayed on Password Protected posts/pages but they don't get any option. Now you can create member only page or change Password Protected posts/pages message by this plugin. The plugin very easy to use and has lots of options.</p>
 #### How to create member/user only page with login form
@@ -25,21 +33,22 @@ See short video For edit password protected form
 
 [youtube https://www.youtube.com/watch?v=1OSEhxFVjUM&t]
 
-<h4>Awesome Plugin’s Features</h4>
+<h4>Awesome Plugin's Features</h4>
 <ul>
-	<li><strong>Create unlimited member only page </strong></li>
-	<li><strong>Create unlimited user only page </strong></li>
-	<li><strong>Create custom login page </strong></li>
-	<li><strong>Customize login form </strong></li>
-	<li><strong>Live customize options for login form </strong></li>
-	<li><strong>Extend Password Protected feature </strong></li>
-	<li><strong>Live customize options for Password Protected form </strong></li>
-	<li><strong>New style & desgin for Password Protected form</strong></li>
-	<li><strong>Change text position top or bottom of the form.</strong></li>
-	<li><strong>Support top social site.</strong></li>
-	<li><strong>Change social icon style.</strong></li>
-	<li><strong>Set social icons three different position</strong></li>
-	<li><strong>Four password form style. </strong></li>
+    <li><strong>NEW: Conditional Content Display</strong></li>
+    <li><strong>Create unlimited member only page </strong></li>
+    <li><strong>Create unlimited user only page </strong></li>
+    <li><strong>Create custom login page </strong></li>
+    <li><strong>Customize login form </strong></li>
+    <li><strong>Live customize options for login form </strong></li>
+    <li><strong>Extend Password Protected feature </strong></li>
+    <li><strong>Live customize options for Password Protected form </strong></li>
+    <li><strong>New style & desgin for Password Protected form</strong></li>
+    <li><strong>Change text position top or bottom of the form.</strong></li>
+    <li><strong>Support top social site.</strong></li>
+    <li><strong>Change social icon style.</strong></li>
+    <li><strong>Set social icons three different position</strong></li>
+    <li><strong>Four password form style. </strong></li>
 </ul>
 
 ####Attention: You may check this author Free and premium theme <a href="https://wpthemespace.com/themes/">wpthemespace.com</a> 
@@ -121,6 +130,11 @@ Yes you can change default form style
 
 
 == Changelog ==
+
+= 1.3.0 =
+ * Added conditional meta feature
+ * Added user based content visibility
+ * Added separate title and featured image visibility options
 
 = 1.2.11 =
  * added install date for big update

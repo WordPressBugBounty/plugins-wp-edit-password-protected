@@ -8,7 +8,7 @@
  * Plugin Name:       Wp Edit Password Protected
  * Plugin URI:        http://wpthemespace.com
  * Description:       Create member only page and change the message displayed of default wp Password Protected.
- * Version:           1.2.11
+ * Version:           1.3.0
  * Author:            Noor alam
  * Author URI:        http://wpthemespace.com
  * License:           GPL-2.0+
@@ -36,7 +36,7 @@ final class wpEditPasswordProtected
      *
      * @var string The plugin version.
      */
-    const version = '1.2.11';
+    const version = '1.3.0';
 
     /**
      * Minimum PHP Version
@@ -122,6 +122,9 @@ final class wpEditPasswordProtected
         require_once(WP_EDIT_PASS_PATH . '/admin/kirki/kirki.php');
         require_once(WP_EDIT_PASS_PATH . '/admin/kirki/password-protect-settings.php');
         require_once(WP_EDIT_PASS_PATH . '/admin/kirki/admin-page-setup.php');
+
+        /* Conditional Meta functionality */
+        require_once(WP_EDIT_PASS_PATH . '/includes/conditional-meta/class-conditional-meta.php');
     }
 
 
@@ -182,6 +185,9 @@ final class wpEditPasswordProtected
         wp_enqueue_style('wpps-admin', WP_EDIT_PASS_ASSETS . 'css/admin.css', array(), WP_EDIT_PASS_VERSION, 'all');
 
         wp_enqueue_script('wpepp-admin', WP_EDIT_PASS_ASSETS . 'js/admin.js', array('jquery'), WP_EDIT_PASS_VERSION, true);
+        wp_localize_script('wpepp-admin', 'wpeppAdmin', array(
+            'nonce' => wp_create_nonce('wpepp_dismiss_notice')
+        ));
     }
 
     function customize_preview_assets()
@@ -222,3 +228,18 @@ final class wpEditPasswordProtected
     }
 }
 wpEditPasswordProtected::instance();
+
+
+// AJAX handler for dismissing notice
+function wpepp_dismiss_update_notice()
+{
+    check_ajax_referer('wpepp_dismiss_notice', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error();
+    }
+
+    update_option('wpepp_update_1_3_dismissed', true);
+    wp_send_json_success();
+}
+add_action('wp_ajax_wpepp_dismiss_update_notice', 'wpepp_dismiss_update_notice');

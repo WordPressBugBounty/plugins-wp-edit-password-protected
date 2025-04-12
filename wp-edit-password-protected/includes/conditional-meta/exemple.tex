@@ -1,0 +1,339 @@
+ $element->add_control(
+            'mg_conditional_display_enable',
+            [
+                'label' => __('Enable Conditional Display', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SWITCHER,
+                'default' => '',
+                'label_on' => __('Yes', 'magical-addons-for-elementor'),
+                'label_off' => __('No', 'magical-addons-for-elementor'),
+                'separator' => 'before',
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_display_notice',
+            [
+                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'raw' => __('Note: Conditions are applied on the frontend only.', 'magical-addons-for-elementor'),
+                'content_classes' => 'elementor-panel-alert elementor-panel-alert-info',
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_display_condition',
+            [
+                'label' => __('Display When', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT,
+                'default' => 'user_logged_in',
+                'options' => [
+                    'user_logged_in' => __('User is logged in', 'magical-addons-for-elementor'),
+                    'user_logged_out' => __('User is logged out', 'magical-addons-for-elementor'),
+                    'user_role' => __('User has specific role', 'magical-addons-for-elementor'),
+                    'device_type' => __('Device type is', 'magical-addons-for-elementor'),
+                    'day_of_week' => __('Day of week is', 'magical-addons-for-elementor'),
+                    'time_of_day' => __('Time is between', 'magical-addons-for-elementor'),
+                    'date_range' => __('Date is between', 'magical-addons-for-elementor'),
+                    'recurring_schedule' => __('Recurring schedule', 'magical-addons-for-elementor'),
+                    // New conditions
+                    'post_type' => __('Current post type is', 'magical-addons-for-elementor'),
+                    'browser_type' => __('Browser is', 'magical-addons-for-elementor'),
+                    'url_parameter' => __('URL parameter exists', 'magical-addons-for-elementor'),
+                    'referrer_source' => __('Visitor came from', 'magical-addons-for-elementor'),
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                ],
+            ]
+        );
+
+        // User Role condition
+        $element->add_control(
+            'mg_conditional_user_role',
+            [
+                'label' => __('Select Role', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'options' => $this->get_user_roles(),
+                'multiple' => true,
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'user_role',
+                ],
+            ]
+        );
+
+        // Device type condition
+        $element->add_control(
+            'mg_conditional_device_type',
+            [
+                'label' => __('Select Device', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT,
+                'default' => 'mobile',
+                'options' => [
+                    'desktop' => __('Desktop', 'magical-addons-for-elementor'),
+                    'tablet' => __('Tablet', 'magical-addons-for-elementor'),
+                    'mobile' => __('Mobile', 'magical-addons-for-elementor'),
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'device_type',
+                ],
+            ]
+        );
+
+        // Day of week condition
+        $element->add_control(
+            'mg_conditional_day_of_week',
+            [
+                'label' => __('Select Days', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'options' => [
+                    '1' => __('Monday', 'magical-addons-for-elementor'),
+                    '2' => __('Tuesday', 'magical-addons-for-elementor'),
+                    '3' => __('Wednesday', 'magical-addons-for-elementor'),
+                    '4' => __('Thursday', 'magical-addons-for-elementor'),
+                    '5' => __('Friday', 'magical-addons-for-elementor'),
+                    '6' => __('Saturday', 'magical-addons-for-elementor'),
+                    '0' => __('Sunday', 'magical-addons-for-elementor'),
+                ],
+                'multiple' => true,
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'day_of_week',
+                ],
+            ]
+        );
+
+        // Time of day condition - Improved with DATE_TIME picker
+        $element->add_control(
+            'mg_conditional_time_start',
+            [
+                'label' => __('Start Time', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => '09:00',
+                'picker_options' => [
+                    'enableTime' => true,
+                    'noCalendar' => true,
+                    'dateFormat' => 'H:i',
+                    'time_24hr' => true,
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'time_of_day',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_time_end',
+            [
+                'label' => __('End Time', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => '17:00',
+                'picker_options' => [
+                    'enableTime' => true,
+                    'noCalendar' => true,
+                    'dateFormat' => 'H:i',
+                    'time_24hr' => true,
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'time_of_day',
+                ],
+            ]
+        );
+
+        // Date Range condition
+        $element->add_control(
+            'mg_conditional_date_start',
+            [
+                'label' => __('Start Date', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => date('Y-m-d'),
+                'picker_options' => [
+                    'enableTime' => false,
+                    'dateFormat' => 'Y-m-d',
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'date_range',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_date_end',
+            [
+                'label' => __('End Date', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => date('Y-m-d', strtotime('+7 days')),
+                'picker_options' => [
+                    'enableTime' => false,
+                    'dateFormat' => 'Y-m-d',
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'date_range',
+                ],
+            ]
+        );
+
+        // Recurring Schedule condition
+        $element->add_control(
+            'mg_conditional_recurring_days',
+            [
+                'label' => __('Select Days', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'options' => [
+                    '1' => __('Monday', 'magical-addons-for-elementor'),
+                    '2' => __('Tuesday', 'magical-addons-for-elementor'),
+                    '3' => __('Wednesday', 'magical-addons-for-elementor'),
+                    '4' => __('Thursday', 'magical-addons-for-elementor'),
+                    '5' => __('Friday', 'magical-addons-for-elementor'),
+                    '6' => __('Saturday', 'magical-addons-for-elementor'),
+                    '0' => __('Sunday', 'magical-addons-for-elementor'),
+                ],
+                'multiple' => true,
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'recurring_schedule',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_recurring_time_start',
+            [
+                'label' => __('Start Time', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => '09:00',
+                'picker_options' => [
+                    'enableTime' => true,
+                    'noCalendar' => true,
+                    'dateFormat' => 'H:i',
+                    'time_24hr' => true,
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'recurring_schedule',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_recurring_time_end',
+            [
+                'label' => __('End Time', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::DATE_TIME,
+                'default' => '17:00',
+                'picker_options' => [
+                    'enableTime' => true,
+                    'noCalendar' => true,
+                    'dateFormat' => 'H:i',
+                    'time_24hr' => true,
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'recurring_schedule',
+                ],
+            ]
+        );
+
+        // After the recurring schedule controls and before the action control
+        
+        // Post Type condition
+        $element->add_control(
+            'mg_conditional_post_type',
+            [
+                'label' => __('Select Post Type', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'options' => $this->get_post_types(),
+                'multiple' => true,
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'post_type',
+                ],
+            ]
+        );
+
+        // Browser Type condition
+        $element->add_control(
+            'mg_conditional_browser_type',
+            [
+                'label' => __('Select Browser', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT2,
+                'options' => [
+                    'chrome' => __('Chrome', 'magical-addons-for-elementor'),
+                    'firefox' => __('Firefox', 'magical-addons-for-elementor'),
+                    'safari' => __('Safari', 'magical-addons-for-elementor'),
+                    'edge' => __('Edge', 'magical-addons-for-elementor'),
+                    'opera' => __('Opera', 'magical-addons-for-elementor'),
+                    'ie' => __('Internet Explorer', 'magical-addons-for-elementor'),
+                ],
+                'multiple' => true,
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'browser_type',
+                ],
+            ]
+        );
+
+        // URL Parameter condition
+        $element->add_control(
+            'mg_conditional_url_parameter_name',
+            [
+                'label' => __('Parameter Name', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::TEXT,
+                'placeholder' => 'param',
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'url_parameter',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_url_parameter_value',
+            [
+                'label' => __('Parameter Value (optional)', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::TEXT,
+                'placeholder' => 'value',
+                'description' => __('Leave empty to check for parameter existence only', 'magical-addons-for-elementor'),
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'url_parameter',
+                ],
+            ]
+        );
+
+        // Referrer Source condition
+        $element->add_control(
+            'mg_conditional_referrer_source',
+            [
+                'label' => __('Referrer URL contains', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::TEXT,
+                'placeholder' => 'google.com',
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                    'mg_conditional_display_condition' => 'referrer_source',
+                ],
+            ]
+        );
+
+        $element->add_control(
+            'mg_conditional_action',
+            [
+                'label' => __('Action', 'magical-addons-for-elementor'),
+                'type' => \Elementor\Controls_Manager::SELECT,
+                'default' => 'show',
+                'options' => [
+                    'show' => __('Show Element', 'magical-addons-for-elementor'),
+                    'hide' => __('Hide Element', 'magical-addons-for-elementor'),
+                ],
+                'condition' => [
+                    'mg_conditional_display_enable' => 'yes',
+                ],
+            ]
+        );
