@@ -131,10 +131,8 @@ Yes you can change default form style
 
 == Changelog ==
 
-= 1.3.0 =
- * Added conditional meta feature
- * Added user based content visibility
- * Added separate title and featured image visibility options
+= 1.3.1 =
+ * Condition meta WooCommerce issue fixed
 
 = 1.2.11 =
  * added install date for big update

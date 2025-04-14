@@ -179,6 +179,7 @@ endif;
 
 function wpepop_admin_notice()
 {
+
     $service_url = 'https://wpthemespace.com/custom-wordpress-services';
     $notices = array(
 
@@ -256,7 +257,6 @@ add_action('admin_notices', 'wpepop_admin_notice');
 //Admin notice 
 function wp_edit_pass_new_optins_texts()
 {
-    global $pagenow;
 
     $hide_date = get_option('wpeditpass_info_randtext');
     if (!empty($hide_date)) {
