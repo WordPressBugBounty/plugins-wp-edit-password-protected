@@ -22,7 +22,8 @@ if (!class_exists('kirki')) {
     return;
 }
 
-//old options 
+function wpepp_init_kirki_admin_setup()
+{
 // Default value 
 $pp_admin_page = get_option('pp_admin_page');
 $pp_page_options = (!empty($pp_admin_page)) ? $pp_admin_page : '';
@@ -592,3 +593,5 @@ new \Kirki\Field\Checkbox_Switch(
         ],
     ]
 );
+}
+add_action('init', 'wpepp_init_kirki_admin_setup');

@@ -131,6 +131,10 @@ Yes you can change default form style
 
 == Changelog ==
 
+= 1.3.2 =
+ * load_textdomain_just_in_time issue fixed
+ * tested WordPress 6.8
+
 = 1.3.1 =
  * Condition meta WooCommerce issue fixed
 
