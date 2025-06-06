@@ -32,6 +32,14 @@ final class Framework {
 	protected static $instance = null;
 
 	/**
+	 * The modules object.
+	 *
+	 * @access public
+	 * @var \Kirki\Compatibility\Modules
+	 */
+	public $modules;
+
+	/**
 	 * Access the single instance of this class.
 	 *
 	 * @static

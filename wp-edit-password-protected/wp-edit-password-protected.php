@@ -8,7 +8,7 @@
  * Plugin Name:       Wp Edit Password Protected
  * Plugin URI:        http://wpthemespace.com
  * Description:       Create member only page and change the message displayed of default wp Password Protected.
- * Version:           1.3.3
+ * Version:           1.3.4
  * Author:            Noor alam
  * Author URI:        http://wpthemespace.com
  * License:           GPL-2.0+
