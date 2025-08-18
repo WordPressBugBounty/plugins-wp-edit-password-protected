@@ -8,7 +8,7 @@
  * Plugin Name:       Wp Edit Password Protected
  * Plugin URI:        http://wpthemespace.com
  * Description:       Create member only page and change the message displayed of default wp Password Protected.
- * Version:           1.3.4
+ * Version:           1.3.5
  * Author:            Noor alam
  * Author URI:        http://wpthemespace.com
  * License:           GPL-2.0+
@@ -36,7 +36,7 @@ final class wpEditPasswordProtected
      *
      * @var string The plugin version.
      */
-    const version = '1.3.3';
+    const version = '1.3.5';
 
     /**
      * Minimum PHP Version
@@ -221,7 +221,7 @@ final class wpEditPasswordProtected
         $referrer = $_SERVER['HTTP_REFERER'];  // where did the post submission come from?
         // if there's a valid referrer, and it's not the default log-in screen
         if (!empty($referrer) && !strstr($referrer, 'wp-login') && !strstr($referrer, 'wp-admin')) {
-            wp_redirect($referrer . '?login=failed');  // let's append some information (login=failed) to the URL for the theme to use
+            wp_safe_redirect($referrer . '?login=failed');  // let's append some information (login=failed) to the URL for the theme to use
             exit;
         }
     }
@@ -242,3 +242,26 @@ function wpepp_dismiss_update_notice()
     wp_send_json_success();
 }
 add_action('wp_ajax_wpepp_dismiss_update_notice', 'wpepp_dismiss_update_notice');
+
+// Protect REST API: Hide content for password-protected pages unless authorized
+
+// Hide REST API content for password protected or conditional display enabled posts/pages
+$wpepp_rest_hide_content = function($response, $post, $request) {
+    $hide = false;
+    // Hide if password protected and user cannot edit
+    if (post_password_required($post) && !current_user_can('edit_post', $post->ID)) {
+        $hide = true;
+    }
+    // Hide if conditional display is enabled
+    $conditional_enabled = get_post_meta($post->ID, '_wpepp_conditional_display_enable', true);
+    if ($conditional_enabled === 'yes' && !current_user_can('edit_post', $post->ID)) {
+        $hide = true;
+    }
+    if ($hide) {
+        $response->data['content']['rendered'] = __('This content is protected.', 'wp-edit-password-protected');
+        $response->data['excerpt']['rendered'] = '';
+    }
+    return $response;
+};
+add_filter('rest_prepare_page', $wpepp_rest_hide_content, 10, 3);
+add_filter('rest_prepare_post', $wpepp_rest_hide_content, 10, 3);

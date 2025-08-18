@@ -45,6 +45,7 @@ class WPEPP_Conditional_Meta
     public function __construct()
     {
         $this->init_hooks();
+        
     }
 
     /**
@@ -68,7 +69,71 @@ class WPEPP_Conditional_Meta
         // Add filters for title and featured image
         add_filter('the_title', array($this, 'apply_conditional_title'), 10, 2);
         add_filter('post_thumbnail_html', array($this, 'apply_conditional_thumbnail'), 10, 5);
+        // REST API: Hide content if conditional display applies
+        add_filter('rest_prepare_post', array($this, 'rest_api_conditional_content'), 12, 3);
+        add_filter('rest_prepare_page', array($this, 'rest_api_conditional_content'), 12, 3);
+    // REST API: Hide title and featured image if conditional display applies
+    add_filter('rest_prepare_post', array($this, 'rest_api_conditional_title_and_thumbnail'), 13, 3);
+    add_filter('rest_prepare_page', array($this, 'rest_api_conditional_title_and_thumbnail'), 13, 3);
     }
+
+
+     
+    /**
+         * Hide REST API content if conditional display is enabled and condition/action require hiding
+         */
+        public function rest_api_conditional_content($response, $post, $request) {
+            $post_id = $post->ID;
+            $enable = get_post_meta($post_id, '_wpepp_conditional_display_enable', true);
+            if ('yes' !== $enable) {
+                return $response;
+            }
+            $condition = get_post_meta($post_id, '_wpepp_conditional_display_condition', true);
+            $action = get_post_meta($post_id, '_wpepp_conditional_action', true) ?: 'show';
+            // Browser/referrer conditions are client-side only, so always hide in REST
+            if (in_array($condition, array('browser_type', 'referrer_source'))) {
+                $should_hide = true;
+            } else {
+                $condition_met = WPEPP_Conditional_Meta_Helper::evaluate_condition($post_id, $condition);
+                $should_hide = !($condition_met && $action === 'show') && !(!$condition_met && $action === 'hide');
+            }
+            if ($should_hide) {
+                $response->data['content']['rendered'] = __('This content is protected by conditional display.', 'wp-edit-password-protected');
+                $response->data['excerpt']['rendered'] = '';
+            }
+            return $response;
+        }
+
+        /**
+         * Hide REST API title and featured image if conditional display is enabled and control is enabled
+         */
+        public function rest_api_conditional_title_and_thumbnail($response, $post, $request) {
+            $post_id = $post->ID;
+            $enable = get_post_meta($post_id, '_wpepp_conditional_display_enable', true);
+            if ('yes' !== $enable) {
+                return $response;
+            }
+            $condition = get_post_meta($post_id, '_wpepp_conditional_display_condition', true);
+            $action = get_post_meta($post_id, '_wpepp_conditional_action', true) ?: 'show';
+            $control_title = get_post_meta($post_id, '_wpepp_conditional_control_title', true);
+            $control_featured_image = get_post_meta($post_id, '_wpepp_conditional_control_featured_image', true);
+            // Browser/referrer conditions are client-side only, so always hide in REST
+            if (in_array($condition, array('browser_type', 'referrer_source'))) {
+                $should_hide = true;
+            } else {
+                $condition_met = WPEPP_Conditional_Meta_Helper::evaluate_condition($post_id, $condition);
+                $should_hide = !($condition_met && $action === 'show') && !(!$condition_met && $action === 'hide');
+            }
+            if ($should_hide) {
+                if ($control_title === 'yes' && isset($response->data['title']['rendered'])) {
+                    $response->data['title']['rendered'] = '';
+                }
+                if ($control_featured_image === 'yes' && isset($response->data['featured_media'])) {
+                    $response->data['featured_media'] = 0;
+                }
+            }
+            return $response;
+        }
 
     /**
      * Add meta boxes

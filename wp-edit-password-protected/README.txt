@@ -131,6 +131,10 @@ Yes you can change default form style
 
 == Changelog ==
 
+= 1.3.5 =
+ * Condition Meta now added for Rest API
+ * Added wp_safe_redirect instead of wp_redirect
+
 = 1.3.3 =
  * Condition Metabox issue fixd
 
