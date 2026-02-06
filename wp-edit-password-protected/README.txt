@@ -2,8 +2,9 @@
 Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
 Tags: login form, member only page, Password, Protected page, user only page
-Requires at least: 4.5
-Tested up to: 6.8
+Requires at least: 6.0
+Tested up to: 6.9
+Requires PHP: 7.4
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html

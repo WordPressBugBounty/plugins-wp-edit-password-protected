@@ -8,7 +8,9 @@
  * Plugin Name:       Wp Edit Password Protected
  * Plugin URI:        http://wpthemespace.com
  * Description:       Create member only page and change the message displayed of default wp Password Protected.
- * Version:           1.3.5
+ * Version:           1.3.7
+ * Requires PHP:      7.4
+ * Requires at least: 6.0
  * Author:            Noor alam
  * Author URI:        http://wpthemespace.com
  * License:           GPL-2.0+
@@ -36,7 +38,7 @@ final class wpEditPasswordProtected
      *
      * @var string The plugin version.
      */
-    const version = '1.3.5';
+    const version = '1.3.6';
 
     /**
      * Minimum PHP Version
@@ -95,6 +97,8 @@ final class wpEditPasswordProtected
         add_action('plugins_loaded', [$this, 'init']);
         $this->add_all_files();
         add_action('init', [$this, 'i18n']);  // This is correct - keep this line
+        // Save install date when plugin is initialized
+        add_action('init', [$this, 'save_install_date']);
     }
 
 
@@ -127,7 +131,21 @@ final class wpEditPasswordProtected
         require_once(WP_EDIT_PASS_PATH . '/includes/conditional-meta/class-conditional-meta.php');
     }
 
-
+    /**
+     * Save the plugin install date
+     *
+     * @since 1.3.5
+     *
+     * @access public
+     */
+    public function save_install_date()
+    {
+        // Check if the install date is already saved
+        if (!get_option('wpepp_install_date')) {
+            // Save the current date and time as the install date
+            update_option('wpepp_install_date', current_time('mysql'));
+        }
+    }
 
     /**
      * Load Textdomain
