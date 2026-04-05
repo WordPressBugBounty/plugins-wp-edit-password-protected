@@ -1,8 +1,11 @@
 <?php
+
+defined( 'ABSPATH' ) || exit;
+
 /*
  * @link              http://nalam.awesomebootstrap.net
  * @since             1.0.0
- * @package            Wp Edit Password Protected show by customizer
+ * @package            WPEPP
  *
  * @wordpress-plugin
  */
@@ -78,7 +81,7 @@ class wpEditPasswordOutput
         $wppasspro_form_label = get_option('wppasspro_form_label', esc_html__('Password', 'wp-edit-password-protected'));
         $submit_btn_text = get_option('wppasspro_form_btn_text', $submit_btn_text);
 
-        $label = 'pwbox-' . (empty($post->ID) ? rand() : $post->ID);
+        $label = 'pwbox-' . (empty($post->ID) ? wp_rand() : $post->ID);
 
     ?>
         <form class="wppass-form" action="<?php echo esc_url(site_url('wp-login.php?action=postpass', 'login_post')) ?>" method="post">
@@ -200,7 +203,7 @@ class wpEditPasswordOutput
             <?php
             foreach ($social_urls as $link) :
                 if ($link) {
-                    $slink = parse_url(esc_url($link));
+                    $slink = wp_parse_url(esc_url($link));
                     if (!empty($slink['host'])) {
                         $sicon = explode('.', $slink['host']);
                         $icon_class = strtolower($sicon[0]);
@@ -234,12 +237,14 @@ class wpEditPasswordOutput
     public function error_info_text()
     {
         $error_text = get_option('wppasspro_form_errortext', __('The password you have entered is invalid', 'wp-edit-password-protected'));
-        $attempted     = isset($_SESSION['pass_attempt']) ? $_SESSION['pass_attempt'] : false;
+        $attempted     = isset($_SESSION['pass_attempt']) ? sanitize_text_field( wp_unslash( $_SESSION['pass_attempt'] ) ) : false; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         //$wrongPassword = '';
         // If cookie is set password is wrong.
-        if (isset($_COOKIE['wp-postpass_' . COOKIEHASH]) && $attempted !== $_COOKIE['wp-postpass_' . COOKIEHASH]) {
+        $cookie_key = 'wp-postpass_' . COOKIEHASH;
+        $cookie_val = isset($_COOKIE[ $cookie_key ]) ? sanitize_text_field( wp_unslash( $_COOKIE[ $cookie_key ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( $cookie_val && $attempted !== $cookie_val ) {
             // So we can show invalid password message only once.
-            $_SESSION['pass_attempt'] = $_COOKIE['wp-postpass_' . COOKIEHASH];
+            $_SESSION['pass_attempt'] = $cookie_val; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         ?>
             <p class="wppass-error-text"><?php echo esc_html($error_text); ?></p>
 <?php
@@ -248,11 +253,11 @@ class wpEditPasswordOutput
 
     public function cookie_set()
     {
-        if (isset($_COOKIE['wp-postpass_' . COOKIEHASH])) {
+        if (isset($_COOKIE['wp-postpass_' . COOKIEHASH])) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             // Start session to compare pass hashs.
             session_start();
         }
     }
 }
 
-$wppass_from_output = new wpEditPasswordOutput();
+$wpepp_form_output = new wpEditPasswordOutput();

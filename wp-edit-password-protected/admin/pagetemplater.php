@@ -1,9 +1,11 @@
 <?php
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * @link              http://wpthemespace.com
  * @since             1.0.0
- * @package           wp edit password protected
+ * @package           WPEPP
  *
  * @author noor alam
  */
@@ -171,7 +173,7 @@ if (!function_exists('PageTemplater')) {
 			if (file_exists($file)) {
 				return $file;
 			} else {
-				echo $file;
+				echo esc_html( $file );
 			}
 
 			// Return template

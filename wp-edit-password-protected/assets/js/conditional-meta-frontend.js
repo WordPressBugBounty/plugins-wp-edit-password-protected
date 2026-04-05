@@ -1,7 +1,7 @@
 /**
  * Frontend JavaScript for Conditional Meta
  *
- * @package Wp Edit Password Protected
+ * @package WPEPP
  */
 
 (function($) {

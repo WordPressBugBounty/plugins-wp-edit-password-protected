@@ -1,230 +1,395 @@
-=== Wp Edit Password Protected - Create Password Protect Pages & Design Password Protected Form ===
+=== WPEPP – Login Security, Password Protect & Login Page Customizer ===
 Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
-Tags: login form, member only page, Password, Protected page, user only page
+Tags: login security, limit login attempts, password protected, login customizer, block ai crawlers
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Create easily Password protected page or posts in your WordPress website with conditional display options.
+Best Login security, password protected content, block AI crawlers, limit login attempts & login customizer with live preview. Total site protection!
 
 == Description ==
-<h3>Create Password Protect with custom login form or change/edit Password Protected form easily by this plugin.</h3>
-Do you have a WordPress site that you want to password protect any page or post? WP Edit Password Protected is a WordPress plugin that makes it easy to password protect any page or post with login form and add extra text & awesome design in password protect form. You can create member/user only pages and posts, change the message displayed on the password form and add social media icons with live editing options and design.
 
-<h4>NEW: Conditional Display Feature</h4>
-Now you can control when your protected content is shown or hidden based on various conditions:
-<ul>
-    <li>Show/hide content for logout user</li>
-    <li>Show/hide content for login user</li>
-</ul>
+**WPEPP is the all-in-one WordPress login security and login page customizer plugin.** It combines everything you need to limit login attempts, block brute force attacks, hide the login page, password protect content, and customize the WordPress login page — all from a single, modern dashboard with real-time live preview.
 
-A wordpress plugin for simple way to create admin or member only page by member only page template and change the message displayed, add social icons and change password form on Password Protected posts/pages.
-<p>Most of the people want to create member only page and want to change the message displayed on Password Protected posts/pages but they don't get any option. Now you can create member only page or change Password Protected posts/pages message by this plugin. The plugin very easy to use and has lots of options.</p>
-#### How to create member/user only page with login form
-See short video For member or user only page 
+Stop installing five separate plugins. WPEPP replaces your login limiter, login page customizer, password form styler, content restriction plugin, and AI crawler blocker with one lightweight solution that loads zero external scripts on the front end.
 
-[youtube https://www.youtube.com/watch?v=yD6gVNa8vpc&t]
+[View Details](https://wpthemespace.com/wpepp/) | [View Pricing](https://wpthemespace.com/product/wpepp-login-security-password-protect-login-page-customizer/#pricing)
 
-#### How to use Wp Edit Password Protected
-See short video For edit password protected form
+[youtube https://www.youtube.com/watch?v=PLACEHOLDER]
 
-[youtube https://www.youtube.com/watch?v=1OSEhxFVjUM&t]
+### 🔐 Limit Login Attempts & Brute Force Protection
 
-<h4>Awesome Plugin's Features</h4>
-<ul>
-    <li><strong>NEW: Conditional Content Display</strong></li>
-    <li><strong>Create unlimited member only page </strong></li>
-    <li><strong>Create unlimited user only page </strong></li>
-    <li><strong>Create custom login page </strong></li>
-    <li><strong>Customize login form </strong></li>
-    <li><strong>Live customize options for login form </strong></li>
-    <li><strong>Extend Password Protected feature </strong></li>
-    <li><strong>Live customize options for Password Protected form </strong></li>
-    <li><strong>New style & desgin for Password Protected form</strong></li>
-    <li><strong>Change text position top or bottom of the form.</strong></li>
-    <li><strong>Support top social site.</strong></li>
-    <li><strong>Change social icon style.</strong></li>
-    <li><strong>Set social icons three different position</strong></li>
-    <li><strong>Four password form style. </strong></li>
-</ul>
+Protect your WordPress login form from brute force attacks with built-in login attempt limiting and IP-based lockouts.
 
-####Attention: You may check this author Free and premium theme <a href="https://wpthemespace.com/themes/">wpthemespace.com</a> 
-####WordPress Password Protected live demo here: demo password is 123
-<a target="_blank" href="https://wpthemespace.com/wp-edit-password-protected/"><strong>Password Protected Live demo</strong></a>
-####Member only page live demo here:
-<a target="_blank" href="https://wpthemespace.com/member-only-page-2/"><strong>Member only page Live demo</strong></a>
-<a target="_blank" href="https://wpcolors.net/my-account/"><strong>Member only page with login form demo</strong></a>(Shortcode used for login form)
+* **Login Attempt Limiter** — automatically block IP addresses after repeated failed login attempts
+* **Configurable lockout** — set the maximum number of failed attempts and lockout duration in minutes
+* **Login Honeypot** — invisible bot trap field catches automated brute force login attacks instantly
+* **Registration Honeypot** — hidden spam trap on the WordPress registration form blocks fake signups
+* **Registration Rate Limiter** — prevent mass registration spam with per-IP rate limiting
+* **IP-based tracking** — every failed login is tracked by IP address for accurate blocking
 
+### 🛡️ Hide Login Page & Custom Login URL (Pro)
 
-#### Translations
+Move your default WordPress login page to a secret URL so bots and attackers can never find it.
 
-* English
+* **Custom Login URL** — change `wp-login.php` to any URL you choose (e.g., `/my-secret-login`)
+* **Hide Default Login** — the original `wp-login.php` returns a 404, invisible to attackers
+* **After-Login Redirect** — send users to a specific page after successful login
+* **Auto-Login Links** — generate secure one-time login tokens for specific users
+
+### 🔑 Two-Factor Authentication – 2FA (Pro)
+
+Add an extra layer of security to every WordPress login with TOTP-based two-factor authentication.
+
+* **Authenticator App Support** — works with Google Authenticator, Authy, Microsoft Authenticator, and any TOTP app
+* **QR Code Setup** — users scan a QR code to set up 2FA in seconds
+* **Recovery Codes** — 8 one-time backup codes in case a user loses their authenticator device
+* **Role-Based Enforcement** — enable 2FA for specific user roles (administrators, editors, etc.)
+* **RFC 6238 Compliant** — industry-standard time-based one-time password implementation
+
+### 🤖 Google reCAPTCHA Integration (Pro)
+
+Add Google reCAPTCHA to your login and registration forms to stop bots before they even try.
+
+* **Login Form reCAPTCHA** — prevent automated login attempts with CAPTCHA verification
+* **Registration Form reCAPTCHA** — block bot signups on the WordPress registration page
+* **Easy Setup** — just enter your Site Key and Secret Key to activate
+
+### 📊 Login Activity Log (Pro)
+
+Monitor every login attempt on your WordPress site with a detailed activity log.
+
+* **Complete Logging** — records every successful, failed, and locked-out login attempt
+* **IP Address Tracking** — see which IPs are attempting to access your site
+* **User-Agent Detection** — identify the browser or bot behind each login attempt
+* **Status Filtering** — filter the log by success, failure, or lockout status
+* **Timestamp Records** — exact date and time of every login event
+
+### 🛑 Block AI Crawlers & Bots
+
+Prevent AI companies from crawling and training on your website content. Block GPTBot, CCBot, Google-Extended, and more.
+
+* **One-Click AI Blocker** — toggle known AI crawlers on or off from a simple checklist
+* **robots.txt Rules** — automatically generates and injects bot-blocking rules into your `robots.txt`
+* **User-Agent Blocking** — returns 403 Forbidden to blocked AI crawlers at the server level
+* **Rule Preview** — see exactly what rules will be added before saving
+
+### 🔒 Lock Entire Site — Site Access Control
+
+Need to lock your entire WordPress site? WPEPP gives you two powerful ways to do it — no plugins or code required.
+
+**Admin Only Mode** — restricts the entire site to logged-in users only. Anyone who is not signed in is automatically redirected to the login page or shown a login popup. Perfect for intranet sites, staging environments, or member communities.
+
+**Site Password Protection** — lock the whole site behind a single shared password. Visitors must enter the password before they can view any page. Logged-in administrators always bypass it automatically. Set a cookie duration so returning visitors are not asked again.
+
+* **Admin-Only Mode** — lock the entire front end so only logged-in users can view it
+* **Site Password** — require a single password for all visitors to access the site
+* **Configurable Cookie Duration** — set how many days the access cookie lasts before asking again
+* **Bypass for Admins** — logged-in administrators always skip the password gate automatically
+* **Custom Access Message** — show a branded message above the password form
+* **Login Popup Option** — show a blurred login overlay instead of a redirect (Pro)
+* **Page Whitelist** — keep login, register, and selected pages accessible while the rest is locked
+
+### 🔐 Password Protect Pages & Content Lock (Pro)
+
+Lock any WordPress post, page, or custom post type so only authorized users can see the content.
+
+* **Per-Post Toggle** — lock individual posts from the Gutenberg editor sidebar or Classic Editor meta box
+* **Multiple Lock Actions** — choose from login link, inline password form, full-page popup with blur, or redirect
+* **Role-Based Locking** — restrict content to specific user roles (subscribers, members, etc.)
+* **Auto-Expiry Unlock** — automatically unlock content at a scheduled date and time
+* **Excerpt on Archives** — optionally show a teaser excerpt on blog listing pages
+* **Works Everywhere** — compatible with posts, pages, and all registered custom post types
+
+### 📋 Conditional Content Display
+
+Show or hide any post or page based on smart conditions — without shortcodes.
+
+* **User Status** — show content only to logged-in or logged-out users (Free)
+* **User Role** — target administrators, editors, subscribers, or any custom role (Pro)
+* **Device Type** — show different content on desktop, tablet, or mobile (Pro)
+* **Time & Date** — schedule visibility by time range, date range, day of week, or recurring schedule (Pro)
+* **Browser Detection** — target Chrome, Firefox, Safari, Edge, or Opera users (Pro)
+* **URL Parameters** — show content based on query string values like `?ref=email` (Pro)
+* **Referrer Source** — display content based on where the visitor came from (Pro)
+* **REST API Compatible** — hidden content is stripped from API responses for headless WordPress setups
+* **12 Conditions Total** — the most flexible conditional visibility system available
+
+### 👥 Member-Only Pages
+
+Create pages visible only to logged-in members — no membership plugin required.
+
+* **Dedicated Page Template** — assign the "Member Only" template to any WordPress page
+* **Built-In Login Form** — visitors see a login form; authenticated users see the real content
+* **Zero Configuration** — works out of the box, no setup needed
+
+### 🎨 Login Page Customizer with Live Preview
+
+Customize the default WordPress login page (`wp-login.php`) with a visual editor and real-time preview.
+
+* **Background Options** — solid color, CSS gradient, background image, or background video with overlay
+* **Custom Logo** — upload your own logo image, set its size, or use a text-based logo with custom font
+* **Form Styling** — customize background, border, width, padding, and box shadow of the login form
+* **Field Styling** — change input background, text color, border, padding, height, and focus state
+* **Button Styling** — customize background, text color, font size, border radius, and hover state
+* **Heading & Links** — style the form heading text and "Lost your password?" link
+* **Error Messages** — customize the color, font, background, and padding of login error messages
+* **Register & Lost Password Pages (Pro)** — same visual editor for `wp-login.php?action=register` and `?action=lostpassword`
+* **Live Preview** — every change is visible in real time before you save
+
+### 🎯 Password-Protected Form Styling
+
+Replace the plain WordPress password form with beautiful, branded designs using a real-time visual editor.
+
+* **4 Unique Form Styles** — 2 free styles, 2 additional styles with Pro
+* **Custom Text** — add header and description text above or below the password form
+* **Button & Label Text** — change the submit button label, input placeholder, and error messages
+* **Social Media Icons** — add links to Facebook, X (Twitter), YouTube, Instagram, LinkedIn, Pinterest, and Tumblr
+* **Icon Controls** — set position (top, middle, bottom), alignment, and visual style
+* **10+ One-Click Templates** — import pre-built designs like Minimal, Modern Dark, Corporate, Nature, Gradient Wave, and more
+
+### 🛡️ Security Hardening
+
+Reduce your WordPress attack surface with built-in hardening tools.
+
+* **Disable XML-RPC** — shut down the `xmlrpc.php` endpoint used by bots for brute force and DDoS attacks
+* **Hide WordPress Version** — remove the generator meta tag and version query strings from your source code
+* **Disable REST API User Enumeration** — block the `/wp/v2/users` endpoint to prevent username discovery
+* **IP Blocklist & Allowlist (Pro)** — manually block or allow specific IP addresses
+* **Disposable Email Blocker (Pro)** — prevent registrations with temporary email addresses
+* **Email Domain Whitelist/Blacklist (Pro)** — restrict or allow signups by email domain
+* **Admin Approval for Registrations (Pro)** — require manual admin approval before new users can log in
+
+---
+
+### ✅ Free vs Pro Comparison
+
+| Feature | Free | Pro |
+|---|:---:|:---:|
+| **Login Security** | | |
+| Limit Login Attempts & IP Lockout | ✓ | ✓ |
+| Login Honeypot (Bot Trap) | ✓ | ✓ |
+| Registration Honeypot | ✓ | ✓ |
+| Registration Rate Limiter | ✓ | ✓ |
+| Hide Login Page (Custom Login URL) | — | ✓ |
+| Two-Factor Authentication (2FA) | — | ✓ |
+| Google reCAPTCHA (Login + Register) | — | ✓ |
+| Login Activity Log | — | ✓ |
+| IP Blocklist / Allowlist | — | ✓ |
+| Disposable Email Blocker | — | ✓ |
+| Email Domain Whitelist/Blacklist | — | ✓ |
+| Admin Registration Approval | — | ✓ |
+| **Security Hardening** | | |
+| Disable XML-RPC | ✓ | ✓ |
+| Hide WordPress Version | ✓ | ✓ |
+| Disable REST API User Enumeration | ✓ | ✓ |
+| AI Crawler & Bot Blocker | ✓ | ✓ |
+| **Content Protection** | | |
+| Site-Wide Access Control | ✓ | ✓ |
+| Admin-Only Mode | ✓ | ✓ |
+| Site-Wide Password | ✓ | ✓ |
+| Content Lock (Per-Post) | — | ✓ |
+| Auto-Expiry Unlock | — | ✓ |
+| Role-Based Content Lock | — | ✓ |
+| Conditional Display (Login Status) | ✓ | ✓ |
+| Conditional Display (12 Conditions) | — | ✓ |
+| Member-Only Page Template | ✓ | ✓ |
+| **Login Page Customizer** | | |
+| Login Page Styling (Background, Logo, Form) | ✓ | ✓ |
+| Login Page Advanced Styling + Custom CSS | — | ✓ |
+| Register Page Styling | — | ✓ |
+| Lost Password Page Styling | — | ✓ |
+| **Password Form Styling** | | |
+| Password Form – Styles 1 & 2 | ✓ | ✓ |
+| Password Form – Styles 3 & 4 | — | ✓ |
+| Custom Text, Labels & Social Icons | ✓ | ✓ |
+| Templates Gallery (3 Free / 10+ Pro) | ✓ | ✓ |
+| **Preview & Admin** | | |
+| Real-Time Live Preview | ✓ | ✓ |
+| Desktop Responsive Preview | ✓ | ✓ |
+| Tablet & Mobile Responsive Preview | — | ✓ |
+| React-Powered Admin Dashboard | ✓ | ✓ |
+
+---
+
+### 🌐 Live Demos
+
+See WPEPP in action:
+
+* [Password-protected page demo](https://wpthemespace.com/wpepp/) 
+
+### 🏗️ Built for Performance
+
+WPEPP is designed to be fast and lightweight:
+
+* **No external scripts** on the front end — zero impact on page load speed
+* **Conditional asset loading** — CSS and JS load only on pages that need them
+* **Modern React admin** — the settings panel is fast and responsive without slowing your site
+* **REST API powered** — all settings are saved via the WordPress REST API, no page reloads
+
+### 🌍 Translations
+
+* English (default)
+* Translation-ready — `.pot` file included for translators
 
 == Installation ==
 
-<h2>This section describes how to install the plugin and get it working.</h2>
+= Install from WordPress (Recommended) =
 
-e.g.
+1. Go to **Plugins → Add New** in your WordPress dashboard.
+2. Search for **WPEPP** or **limit login attempts customizer**.
+3. Click **Install Now**, then **Activate**.
+4. Click **WPEPP** in the admin sidebar to open the settings dashboard.
 
-<h4>First things first, thank you for choosing our Wp Edit Password Protected plugin!</h4>
-<h4>You can install the plugin one of two ways:</h4>
-<h4>Install using FTP</h4>
-<ul>
-	<li>Unzip the <strong>Click to top.zip</strong> file locally to your machine</li>
-		<li>Connect to your FTP area using your preferred FTP package</li>
-		<li>Upload the <strong>Click to top.zip</strong> folder that you extracted from the zip file to the plugin folder of your WordPress
-										installation (<strong>wp-content -&gt; plugin</strong>)
-									</li>
-		<li>Go to <strong>plugin </strong> and activate Click to top.<br>
-									</li>
-		<li>Go to <strong>setting->WP Edit password protected options </strong> and change or add massage and social icon.<br>
-									</li>
-</ul>
-<h4>Install by WordPress (recommended)</h4>
-<ul>
-	<li>Unzip the <strong>Click to top.zip</strong> file locally to your machine</li>
-	<li>Connect to your FTP area using your preferred FTP package</li>
-	<li>Upload the <strong>Click to top.zip</strong> folder that you extracted from the zip file to the plugin folder of your WordPress
-	installation (<strong>wp-content -&gt; plugin</strong>)
-	</li>
-	<li>Go to <strong>plugin </strong> and activate Click to top.<br>
-	</li>
-    <li>Go to <strong>setting->WP Edit password protected options </strong> and change or add massage and social icon.<br></li>
-</ul>
+= Install Manually via FTP =
 
-## Privacy Policy
-Wp Edit Password Protected uses [Appsero](https://appsero.com) SDK to collect some telemetry data upon user's confirmation. This helps us to troubleshoot problems faster & make product improvements.
+1. Download the plugin `.zip` file and extract it.
+2. Upload the `wp-edit-password-protected` folder to `/wp-content/plugins/`.
+3. Go to **Plugins** in your WordPress dashboard and click **Activate** next to WPEPP.
+4. Click **WPEPP** in the admin sidebar to configure your security and styling settings.
 
-Appsero SDK **does not gather any data by default.** The SDK only starts gathering basic telemetry data **when a user allows it via the admin notice**. We collect the data to ensure a great user experience for all our users.
+= After Activation =
 
-Integrating Appsero SDK **DOES NOT IMMEDIATELY** start gathering data, **without confirmation from users in any case.**
+1. **Security First** — Go to the **Security** tab to enable login limiter, honeypots, and hardening options.
+2. **Site Access** — If you need site-wide restriction, configure it under the **Site Access** tab.
+3. **Style Your Login** — Open the **Form Style** tab to customize your login page with live preview.
+4. **Protect Content** — Use the **Content** tab to set up conditional display rules and member-only pages.
 
-Learn more about how [Appsero collects and uses this data](https://appsero.com/privacy-policy/).
+== Privacy Policy ==
 
+WPEPP uses the [Appsero](https://appsero.com) SDK to collect telemetry data **only after the user opts in** via an admin notice. No data is collected by default.
 
-== Frequently Asked Questions  ==
+The SDK gathers basic diagnostic information (PHP version, WordPress version, plugin version, site URL) to help us troubleshoot issues and improve the product. It does **not** collect personal user data, passwords, or content.
 
-= Can I create member only page by this plugin  =
+Learn more: [Appsero Privacy Policy](https://appsero.com/privacy-policy/).
 
- yes, you can create unlimited member only page by member only template.
- 
-= Can I change Password Protected posts/pages massage  =
+== Frequently Asked Questions ==
 
- yes, you can change Password Protected posts/pages massage.
+= How do I limit login attempts in WordPress? =
 
-= Can I add social icons  =
+Install and activate WPEPP, then go to **WPEPP → Security** in your WordPress dashboard. Enable the **Login Limiter** toggle. You can set the maximum number of failed login attempts allowed and the lockout duration in minutes. Once an IP address exceeds the limit, it is automatically blocked for the configured period. This protects your site from brute force attacks without any additional configuration.
 
-Yes you can add top social link with icon
+= How do I hide the WordPress login page? =
 
-= Can I change default form style   =
+With WPEPP Pro, go to **WPEPP → Security** and enable the **Custom Login URL** feature. Enter your preferred slug (e.g., `my-login`). The default `wp-login.php` URL will return a 404 error, and your login page will only be accessible at your new custom URL. This prevents bots from finding and attacking your login form.
 
-Yes you can change default form style
+= How do I password protect a WordPress page? =
 
+WordPress includes built-in password protection for any post or page — just set the visibility to "Password protected" in the editor. WPEPP enhances the default password form by letting you customize the design with 4 form styles, custom header text, social media icons, and 10+ one-click templates. With WPEPP Pro, you can also lock content to logged-in users, specific roles, or set auto-expiry dates.
+
+= How do I customize the WordPress login page without coding? =
+
+Go to **WPEPP → Form Style → Login Page** in your dashboard. The visual editor lets you change the background (color, gradient, image, or video), upload a custom logo, style the login form, input fields, buttons, links, and error messages — all with a real-time live preview. No code required. Pro users can also style the register and lost-password pages.
+
+= How do I block AI crawlers like ChatGPT and Google AI from scraping my site? =
+
+Go to **WPEPP → Security → AI Crawler Blocker**. You will see a checklist of known AI bots including GPTBot (ChatGPT), CCBot (Common Crawl), Google-Extended, and others. Toggle any bot to block it. WPEPP automatically adds the rules to your `robots.txt` file. You can preview the generated rules before saving.
+
+= How do I add two-factor authentication (2FA) to WordPress? =
+
+With WPEPP Pro, go to **WPEPP → Security** and enable **Two-Factor Authentication**. Select which user roles should be required to use 2FA. Users will be prompted to set up 2FA on their next login by scanning a QR code with any authenticator app (Google Authenticator, Authy, etc.). Eight recovery codes are provided as backup. The implementation follows the RFC 6238 TOTP standard.
+
+= How do I restrict content to logged-in users only? =
+
+WPEPP offers three ways to restrict content: (1) **Site Access Control** — lock the entire site to logged-in users under the Site Access tab. (2) **Content Lock (Pro)** — lock individual posts or pages from the editor sidebar. (3) **Conditional Display** — show or hide specific content blocks based on login status, user role, device type, and 9 more conditions.
+
+= How do I create a members-only page in WordPress? =
+
+Edit any page and assign the **Member Only** page template from the template dropdown. Logged-out visitors will see a login form. Once they log in, they see the real page content. No membership plugin needed — it works out of the box.
+
+= Does WPEPP slow down my website? =
+
+No. WPEPP loads zero external scripts on the front end. CSS and JavaScript files are conditionally loaded only on pages that require them. The admin panel runs on React but only loads inside the WordPress dashboard. Your site speed score will not be affected.
+
+= Is WPEPP compatible with caching plugins? =
+
+Yes. WPEPP works with all major caching plugins including WP Super Cache, W3 Total Cache, LiteSpeed Cache, WP Rocket, and others. Password-protected pages and member-only templates are excluded from caching by default in most setups. If you use site-wide password protection, ensure your caching plugin excludes password-check pages.
+
+= Does the conditional display feature work with the WordPress REST API? =
+
+Yes. Content hidden via WPEPP conditional display rules is also stripped from REST API responses. This means conditional visibility works correctly with headless WordPress setups, Gatsby, Next.js, and other front-end frameworks that consume the REST API.
+
+= Can I use WPEPP with WooCommerce? =
+
+Yes. WPEPP is compatible with WooCommerce. You can use conditional content display on WooCommerce product pages, restrict access to the shop, or password-protect individual products. The login page customizer styles the default WordPress login form which WooCommerce also uses.
+
+= Will my settings be preserved when I update WPEPP? =
+
+Yes. WPEPP includes a built-in migration system that automatically preserves all your settings across version updates, including the upgrade from v1.x to v2.0. Your customizations, security rules, and styling options are never lost during an update.
+
+= Does WPEPP support multisite? =
+
+Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site has its own independent settings. Network-wide activation is supported.
 
 == Screenshots ==
 
-1. Password Protected posts/pages massage with icon
-
+1. React-powered admin dashboard — feature overview, quick stats, and one-click navigation
+2. Login page customizer with real-time live preview — change background, logo, form, and button styles
+3. Password-protected form styling — 4 unique styles with custom text, social icons, and templates
+4. Security settings — login limiter, honeypot, hide login, 2FA, reCAPTCHA, and hardening options
+5. AI crawler blocker — one-click toggle to block GPTBot, CCBot, Google-Extended, and more
+6. Conditional display settings in the Gutenberg editor sidebar
+7. Site access control — admin-only mode, login required, and site-wide password
+8. Templates gallery — 10+ one-click designs for password forms and login pages
 
 == Changelog ==
 
+= 2.0.0 =
+* Complete rebuild with React-powered admin dashboard
+* Added real-time live preview for all form and login page styling
+* Added login page customizer (background, logo, form, fields, buttons, links, errors)
+* Added register page styling (Pro)
+* Added lost-password page styling (Pro)
+* Added login limiter — limit login attempts with configurable lockout
+* Added login honeypot — invisible bot trap for the login form
+* Added registration honeypot — spam trap for the registration form
+* Added registration rate limiter
+* Added custom login URL — hide wp-login.php (Pro)
+* Added two-factor authentication (2FA) with TOTP (Pro)
+* Added Google reCAPTCHA integration for login and registration (Pro)
+* Added login activity log (Pro)
+* Added IP blocklist and allowlist (Pro)
+* Added disposable email blocker (Pro)
+* Added email domain whitelist/blacklist (Pro)
+* Added admin approval for user registrations (Pro)
+* Added disable XML-RPC
+* Added hide WordPress version
+* Added disable REST API user enumeration
+* Added AI crawler blocker (GPTBot, CCBot, Google-Extended, etc.)
+* Added content lock system — lock posts/pages to logged-in users (Pro)
+* Added auto-expiry unlock for content lock (Pro)
+* Added role-based content lock (Pro)
+* Added conditional content display with 12 condition types
+* Added site access control — admin-only, login-required, site-wide password
+* Added member-only page template
+* Added templates gallery with 10+ professionally designed templates
+* Added after-login redirect
+* Added auto-login token generator
+* Added responsive preview toggle (desktop free, tablet/mobile Pro)
+* Migrated from Customizer (Kirki) to REST API settings
+* Full backward compatibility with v1.x settings
+
 = 1.3.5 =
- * Condition Meta now added for Rest API
- * Added wp_safe_redirect instead of wp_redirect
-
-= 1.3.3 =
- * Condition Metabox issue fixd
-
-= 1.3.2 =
- * load_textdomain_just_in_time issue fixed
- * tested WordPress 6.8
+* Conditional meta now supported in REST API responses
+* Replaced wp_redirect with wp_safe_redirect for security
 
 = 1.3.1 =
- * Condition meta WooCommerce issue fixed
-
-= 1.2.11 =
- * added install date for big update
- * twitter icons change to X icon
-
-
-= 1.2.10 =
- * Fixed  Function _load_textdomain_just_in_time was called incorrectly Error
- * update package
-
-= 1.2.6 =
- * updated composer package
-
-= 1.2.4 =
- * Removed extra padding
- * Removed extra button
-
-= 1.2.3 =
- * Password From Page display issue fixed 
- * fixed php error
-
-= 1.2.2 =
- * Added css for new style
- * Added image and text info
- * Fixed one php bug
-
-= 1.2.1 =
- * Fixed error
- * Added video info
+* Fixed conditional meta compatibility with WooCommerce
 
 = 1.2.0 =
- * Added Login form 
- * Added two different opitons for login form 
- * Added 5 new style for password protected form
- * Added huge customize live options
- * Added new options for text and style 
-
-= 1.1.12 =
-Form css issue fixed
-= 1.1.11 =
-tested with WordPress 6.0
-= 1.1.10 =
-tested with WordPress 5.9
-= 1.1.6 =
-Fatal Error fixed
-= 1.1.4 =
-tested with WordPress 5.7
-= 1.1.1 =
-tested with WordPress 5.5
-= 1.1.0 =
-added - Login page style
-
-= 1.0.9 =
-added - Some new style.
-added - Font awesome five.
-added - Some login form options.
-= 1.0.8 =
-added - shortcode field for login form.
-
-= 1.0.7 =
-add - New function or option.
-remove - unwanted notice.
-
-= 1.0.5 =
-add - Minimum height set for member only page.
-add - More options set login button.
-add - Now set custom login url for member.
-= 1.0.4 =
-add - Member only page template.
-add - New settings tab for member only page.
-add - some css for member only page template.
-= 1.0.3 =
-add - One new options.
-= 1.0.2 =
-Fix - One php error fix.
-
-= 1.0.1 =
-Add - Now you can change submit button text.
-Fix - Some css style fix.
-Fix - One php error fix.
+* Added login form display options
+* Added 5 new styles for the password-protected form
+* Added extensive customizer live preview options
+* Added new options for text and style
 
 = 1.0.0 =
-Released version
+* Initial release
+
+== Upgrade Notice ==
+
+= 2.0.0 =
+Major update — complete rebuild with React admin, login security, brute force protection, 2FA, AI blocker, content lock, and login page customizer. All v1.x settings are migrated automatically.

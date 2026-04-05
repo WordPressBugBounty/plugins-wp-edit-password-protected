@@ -2,7 +2,7 @@
 /**
  * Conditional Meta Helper functionality
  *
- * @package Wp Edit Password Protected
+ * @package WPEPP
  */
 
 if (!defined('ABSPATH')) {
@@ -85,80 +85,88 @@ class WPEPP_Conditional_Meta_Helper {
      * @param int $post_id Post ID.
      */
     public static function save_condition_specific_fields($post_id) {
+        // Verify nonce (also checked by caller, but guard the public method).
+        if (
+            ! isset($_POST['wpepp_conditional_meta_box_nonce'])
+            || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpepp_conditional_meta_box_nonce'])), 'wpepp_conditional_meta_box')
+        ) {
+            return;
+        }
+
         // User role
         if (isset($_POST['wpepp_conditional_user_role'])) {
-            $user_roles = is_array($_POST['wpepp_conditional_user_role']) ? array_map('sanitize_text_field', $_POST['wpepp_conditional_user_role']) : array(sanitize_text_field($_POST['wpepp_conditional_user_role']));
+            $user_roles = array_map('sanitize_text_field', wp_unslash((array) $_POST['wpepp_conditional_user_role']));
             update_post_meta($post_id, '_wpepp_conditional_user_role', $user_roles);
         }
         
         // Device type
         if (isset($_POST['wpepp_conditional_device_type'])) {
-            update_post_meta($post_id, '_wpepp_conditional_device_type', sanitize_text_field($_POST['wpepp_conditional_device_type']));
+            update_post_meta($post_id, '_wpepp_conditional_device_type', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_device_type'])));
         }
         
         // Day of week
         if (isset($_POST['wpepp_conditional_day_of_week'])) {
-            $days = is_array($_POST['wpepp_conditional_day_of_week']) ? array_map('sanitize_text_field', $_POST['wpepp_conditional_day_of_week']) : array(sanitize_text_field($_POST['wpepp_conditional_day_of_week']));
+            $days = array_map('sanitize_text_field', wp_unslash((array) $_POST['wpepp_conditional_day_of_week']));
             update_post_meta($post_id, '_wpepp_conditional_day_of_week', $days);
         }
         
         // Time of day
         if (isset($_POST['wpepp_conditional_time_start'])) {
-            update_post_meta($post_id, '_wpepp_conditional_time_start', sanitize_text_field($_POST['wpepp_conditional_time_start']));
+            update_post_meta($post_id, '_wpepp_conditional_time_start', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_time_start'])));
         }
         
         if (isset($_POST['wpepp_conditional_time_end'])) {
-            update_post_meta($post_id, '_wpepp_conditional_time_end', sanitize_text_field($_POST['wpepp_conditional_time_end']));
+            update_post_meta($post_id, '_wpepp_conditional_time_end', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_time_end'])));
         }
         
         // Date range
         if (isset($_POST['wpepp_conditional_date_start'])) {
-            update_post_meta($post_id, '_wpepp_conditional_date_start', sanitize_text_field($_POST['wpepp_conditional_date_start']));
+            update_post_meta($post_id, '_wpepp_conditional_date_start', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_date_start'])));
         }
         
         if (isset($_POST['wpepp_conditional_date_end'])) {
-            update_post_meta($post_id, '_wpepp_conditional_date_end', sanitize_text_field($_POST['wpepp_conditional_date_end']));
+            update_post_meta($post_id, '_wpepp_conditional_date_end', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_date_end'])));
         }
         
         // Recurring schedule
         if (isset($_POST['wpepp_conditional_recurring_time_start'])) {
-            update_post_meta($post_id, '_wpepp_conditional_recurring_time_start', sanitize_text_field($_POST['wpepp_conditional_recurring_time_start']));
+            update_post_meta($post_id, '_wpepp_conditional_recurring_time_start', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_recurring_time_start'])));
         }
         
         if (isset($_POST['wpepp_conditional_recurring_time_end'])) {
-            update_post_meta($post_id, '_wpepp_conditional_recurring_time_end', sanitize_text_field($_POST['wpepp_conditional_recurring_time_end']));
+            update_post_meta($post_id, '_wpepp_conditional_recurring_time_end', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_recurring_time_end'])));
         }
 
         // Recurring days
         if (isset($_POST['wpepp_conditional_recurring_days'])) {
-            $days = is_array($_POST['wpepp_conditional_recurring_days']) ? array_map('sanitize_text_field', $_POST['wpepp_conditional_recurring_days']) : array(sanitize_text_field($_POST['wpepp_conditional_recurring_days']));
+            $days = array_map('sanitize_text_field', wp_unslash((array) $_POST['wpepp_conditional_recurring_days']));
             update_post_meta($post_id, '_wpepp_conditional_recurring_days', $days);
         }
 
         // Post type
         if (isset($_POST['wpepp_conditional_post_type'])) {
-            $post_types = is_array($_POST['wpepp_conditional_post_type']) ? array_map('sanitize_text_field', $_POST['wpepp_conditional_post_type']) : array(sanitize_text_field($_POST['wpepp_conditional_post_type']));
+            $post_types = array_map('sanitize_text_field', wp_unslash((array) $_POST['wpepp_conditional_post_type']));
             update_post_meta($post_id, '_wpepp_conditional_post_type', $post_types);
         }
 
         // Browser type
         if (isset($_POST['wpepp_conditional_browser_type'])) {
-            $browser_types = is_array($_POST['wpepp_conditional_browser_type']) ? array_map('sanitize_text_field', $_POST['wpepp_conditional_browser_type']) : array(sanitize_text_field($_POST['wpepp_conditional_browser_type']));
+            $browser_types = array_map('sanitize_text_field', wp_unslash((array) $_POST['wpepp_conditional_browser_type']));
             update_post_meta($post_id, '_wpepp_conditional_browser_type', $browser_types);
         }
 
         // URL parameter
         if (isset($_POST['wpepp_conditional_url_parameter_name'])) {
-            update_post_meta($post_id, '_wpepp_conditional_url_parameter_name', sanitize_text_field($_POST['wpepp_conditional_url_parameter_name']));
+            update_post_meta($post_id, '_wpepp_conditional_url_parameter_name', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_url_parameter_name'])));
         }
         
         if (isset($_POST['wpepp_conditional_url_parameter_value'])) {
-            update_post_meta($post_id, '_wpepp_conditional_url_parameter_value', sanitize_text_field($_POST['wpepp_conditional_url_parameter_value']));
+            update_post_meta($post_id, '_wpepp_conditional_url_parameter_value', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_url_parameter_value'])));
         }
 
         // Referrer source
         if (isset($_POST['wpepp_conditional_referrer_source'])) {
-            update_post_meta($post_id, '_wpepp_conditional_referrer_source', sanitize_text_field($_POST['wpepp_conditional_referrer_source']));
+            update_post_meta($post_id, '_wpepp_conditional_referrer_source', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_referrer_source'])));
         }
     }
 
@@ -252,7 +260,7 @@ class WPEPP_Conditional_Meta_Helper {
         
         // Try to detect tablets
         if ($is_mobile && isset($_SERVER['HTTP_USER_AGENT'])) {
-            $user_agent = $_SERVER['HTTP_USER_AGENT'];
+            $user_agent = sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
             $is_tablet = preg_match('/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i', $user_agent);
         }
         
@@ -281,7 +289,7 @@ class WPEPP_Conditional_Meta_Helper {
             return false;
         }
         
-        $current_day = date('w'); // 0 (Sunday) to 6 (Saturday)
+        $current_day = gmdate('w'); // 0 (Sunday) to 6 (Saturday)
         
         return in_array($current_day, $days);
     }
@@ -339,7 +347,7 @@ class WPEPP_Conditional_Meta_Helper {
             return false;
         }
         
-        $current_day = date('w'); // 0 (Sunday) to 6 (Saturday)
+        $current_day = gmdate('w'); // 0 (Sunday) to 6 (Saturday)
         $current_time = current_time('H:i');
         
         return (in_array($current_day, $days) && $current_time >= $start_time && $current_time <= $end_time);
@@ -378,12 +386,15 @@ class WPEPP_Conditional_Meta_Helper {
         }
         
         // Check if parameter exists
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only frontend condition check, no form submission.
         if (!isset($_GET[$param_name])) {
             return false;
         }
         
         // If parameter value is specified, check it
-        if (!empty($param_value) && $_GET[$param_name] !== $param_value) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only frontend condition check, no form submission.
+        $get_value = sanitize_text_field(wp_unslash($_GET[$param_name]));
+        if (!empty($param_value) && $get_value !== $param_value) {
             return false;
         }
         

@@ -1,7 +1,7 @@
 /**
  * JavaScript for Conditional Meta Box
  *
- * @package Wp Edit Password Protected
+ * @package WPEPP
  */
 
 jQuery(document).ready(function($) {

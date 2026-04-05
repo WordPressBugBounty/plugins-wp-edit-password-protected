@@ -3,7 +3,7 @@
 /**
  * Conditional Meta functionality
  *
- * @package Wp Edit Password Protected
+ * @package WPEPP
  */
 
 if (!defined('ABSPATH')) {
@@ -188,7 +188,7 @@ class WPEPP_Conditional_Meta
         }
 
         // Verify nonce
-        if (!wp_verify_nonce($_POST['wpepp_conditional_meta_nonce'], 'wpepp_conditional_meta_nonce')) {
+        if (!wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpepp_conditional_meta_nonce'])), 'wpepp_conditional_meta_nonce')) {
             return;
         }
 
@@ -223,14 +223,23 @@ class WPEPP_Conditional_Meta
             update_post_meta($post_id, '_wpepp_conditional_control_featured_image', 'no');
         }
 
-        // Save condition
+        // Save condition.
         if (isset($_POST['wpepp_conditional_display_condition'])) {
-            update_post_meta($post_id, '_wpepp_conditional_display_condition', sanitize_text_field($_POST['wpepp_conditional_display_condition']));
+            $submitted_condition = sanitize_text_field(wp_unslash($_POST['wpepp_conditional_display_condition']));
+            $allowed_conditions = array(
+                'user_logged_in', 'user_logged_out', 'user_role', 'device_type',
+                'day_of_week', 'time_of_day', 'date_range', 'recurring_schedule',
+                'post_type', 'browser_type', 'url_parameter', 'referrer_source',
+            );
+
+            if (in_array($submitted_condition, $allowed_conditions, true)) {
+                update_post_meta($post_id, '_wpepp_conditional_display_condition', $submitted_condition);
+            }
         }
 
         // Save action
         if (isset($_POST['wpepp_conditional_action'])) {
-            update_post_meta($post_id, '_wpepp_conditional_action', sanitize_text_field($_POST['wpepp_conditional_action']));
+            update_post_meta($post_id, '_wpepp_conditional_action', sanitize_text_field(wp_unslash($_POST['wpepp_conditional_action'])));
         }
 
         // Save condition-specific fields
