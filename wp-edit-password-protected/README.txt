@@ -1,7 +1,7 @@
-=== WPEPP – Login Security, Password Protect & Login Page Customizer ===
+=== WPEPP – Essential Security, Password Protect & Login Page Customizer ===
 Contributors: nalam
 Donate link: https://wpthemespace.com/donation/
-Tags: login security, limit login attempts, password protected, login customizer, block ai crawlers
+Tags: essential security, limit login attempts, password protected, login customizer, block ai crawlers
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
@@ -9,17 +9,19 @@ Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Best Login security, password protected content, block AI crawlers, limit login attempts & login customizer with live preview. Total site protection!
+Essential security, password protected, block AI crawlers, limit login attempts, CPU monitor & login page customizer with live preview.
 
 == Description ==
 
-**WPEPP is the all-in-one WordPress login security and login page customizer plugin.** It combines everything you need to limit login attempts, block brute force attacks, hide the login page, password protect content, and customize the WordPress login page — all from a single, modern dashboard with real-time live preview.
+**WPEPP best for Best Essential security, password protected content, block AI crawlers, limit login attempts, CPU monitor & login customizer with live preview. Total site protection! WPEPP is the all-in-one WordPress essential security and login page customizer plugin.** It combines everything you need to limit login attempts, block brute force attacks, hide the login page, password protect content, and customize the WordPress login page — all from a single, modern dashboard with real-time live preview.
 
 Stop installing five separate plugins. WPEPP replaces your login limiter, login page customizer, password form styler, content restriction plugin, and AI crawler blocker with one lightweight solution that loads zero external scripts on the front end.
 
-[View Details](https://wpthemespace.com/wpepp/) | [View Pricing](https://wpthemespace.com/product/wpepp-login-security-password-protect-login-page-customizer/#pricing)
+[View Details](https://wpthemespace.com/wpepp/) | [View Pricing](https://wpthemespace.com/product/wpepp-essential-security-password-protect-login-page-customizer/#pricing)
 
-[youtube https://www.youtube.com/watch?v=PLACEHOLDER]
+[youtube https://www.youtube.com/watch?v=QiMpOBgbhSY]
+
+
 
 ### 🔐 Limit Login Attempts & Brute Force Protection
 
@@ -164,55 +166,92 @@ Reduce your WordPress attack surface with built-in hardening tools.
 * **Email Domain Whitelist/Blacklist (Pro)** — restrict or allow signups by email domain
 * **Admin Approval for Registrations (Pro)** — require manual admin approval before new users can log in
 
+### 📈 CPU Monitor & Site Health Dashboard
+
+Keep your WordPress site fast and healthy with a built-in performance monitoring dashboard.
+
+* **Real-Time CPU Usage** — see current CPU percentage, core count, and 1/5/15-minute load averages
+* **Memory Overview** — monitor PHP memory usage, peak usage, and configured limits
+* **System Health Score** — instant green/yellow/red health badge based on CPU, memory, and cron status
+* **Slow Query Logger** — automatically log database queries that exceed a configurable time threshold
+* **SAVEQUERIES Toggle** — enable or disable WordPress query logging directly from the dashboard
+* **Cron Jobs Manager** — view all scheduled WordPress cron events, run them manually, or delete stale entries
+* **Overdue Cron Detection** — identify cron jobs that are past due and may be stuck
+* **Plugin Performance** — see which plugins consume the most resources and deactivate sluggish ones
+* **Options Bloat Analyzer** — inspect database options table size, autoloaded data, and top autoloaded options
+* **Transient Cleanup** — clean expired transients with one click to reduce database bloat
+* **Error Log Viewer (Pro)** — parse and display PHP and WordPress error log entries by type
+* **WP Config Manager** — toggle WP_DEBUG, WP_DEBUG_LOG, and SAVEQUERIES without editing files
+
 ---
 
 ### ✅ Free vs Pro Comparison
 
-| Feature | Free | Pro |
-|---|:---:|:---:|
-| **Login Security** | | |
-| Limit Login Attempts & IP Lockout | ✓ | ✓ |
-| Login Honeypot (Bot Trap) | ✓ | ✓ |
-| Registration Honeypot | ✓ | ✓ |
-| Registration Rate Limiter | ✓ | ✓ |
-| Hide Login Page (Custom Login URL) | — | ✓ |
-| Two-Factor Authentication (2FA) | — | ✓ |
-| Google reCAPTCHA (Login + Register) | — | ✓ |
-| Login Activity Log | — | ✓ |
-| IP Blocklist / Allowlist | — | ✓ |
-| Disposable Email Blocker | — | ✓ |
-| Email Domain Whitelist/Blacklist | — | ✓ |
-| Admin Registration Approval | — | ✓ |
-| **Security Hardening** | | |
-| Disable XML-RPC | ✓ | ✓ |
-| Hide WordPress Version | ✓ | ✓ |
-| Disable REST API User Enumeration | ✓ | ✓ |
-| AI Crawler & Bot Blocker | ✓ | ✓ |
-| **Content Protection** | | |
-| Site-Wide Access Control | ✓ | ✓ |
-| Admin-Only Mode | ✓ | ✓ |
-| Site-Wide Password | ✓ | ✓ |
-| Content Lock (Per-Post) | — | ✓ |
-| Auto-Expiry Unlock | — | ✓ |
-| Role-Based Content Lock | — | ✓ |
-| Conditional Display (Login Status) | ✓ | ✓ |
-| Conditional Display (12 Conditions) | — | ✓ |
-| Member-Only Page Template | ✓ | ✓ |
-| **Login Page Customizer** | | |
-| Login Page Styling (Background, Logo, Form) | ✓ | ✓ |
-| Login Page Advanced Styling + Custom CSS | — | ✓ |
-| Register Page Styling | — | ✓ |
-| Lost Password Page Styling | — | ✓ |
-| **Password Form Styling** | | |
-| Password Form – Styles 1 & 2 | ✓ | ✓ |
-| Password Form – Styles 3 & 4 | — | ✓ |
-| Custom Text, Labels & Social Icons | ✓ | ✓ |
-| Templates Gallery (3 Free / 10+ Pro) | ✓ | ✓ |
-| **Preview & Admin** | | |
-| Real-Time Live Preview | ✓ | ✓ |
-| Desktop Responsive Preview | ✓ | ✓ |
-| Tablet & Mobile Responsive Preview | — | ✓ |
-| React-Powered Admin Dashboard | ✓ | ✓ |
+**Login Security**
+
+* Limit Login Attempts & IP Lockout — Free & Pro
+* Login Honeypot (Bot Trap) — Free & Pro
+* Registration Honeypot — Free & Pro
+* Registration Rate Limiter — Free & Pro
+* Hide Login Page (Custom Login URL) — Pro
+* Two-Factor Authentication (2FA) — Pro
+* Google reCAPTCHA (Login + Register) — Pro
+* Login Activity Log — Pro
+* IP Blocklist / Allowlist — Pro
+* Disposable Email Blocker — Pro
+* Email Domain Whitelist/Blacklist — Pro
+* Admin Registration Approval — Pro
+
+**Security Hardening**
+
+* Disable XML-RPC — Free & Pro
+* Hide WordPress Version — Free & Pro
+* Disable REST API User Enumeration — Free & Pro
+* AI Crawler & Bot Blocker — Free & Pro
+
+**Content Protection**
+
+* Site-Wide Access Control — Free & Pro
+* Admin-Only Mode — Free & Pro
+* Site-Wide Password — Free & Pro
+* Content Lock (Per-Post) — Pro
+* Auto-Expiry Unlock — Pro
+* Role-Based Content Lock — Pro
+* Conditional Display (Login Status) — Free & Pro
+* Conditional Display (12 Conditions) — Pro
+* Member-Only Page Template — Free & Pro
+
+**Login Page Customizer**
+
+* Login Page Styling (Background, Logo, Form) — Free & Pro
+* Login Page Advanced Styling + Custom CSS — Pro
+* Register Page Styling — Pro
+* Lost Password Page Styling — Pro
+
+**Password Form Styling**
+
+* Password Form – Styles 1 & 2 — Free & Pro
+* Password Form – Styles 3 & 4 — Pro
+* Custom Text, Labels & Social Icons — Free & Pro
+* Templates Gallery (3 Free / 10+ Pro) — Free & Pro
+
+**Preview & Admin**
+
+* Real-Time Live Preview — Free & Pro
+* Desktop Responsive Preview — Free & Pro
+* Tablet & Mobile Responsive Preview — Pro
+* React-Powered Admin Dashboard — Free & Pro
+
+**CPU Monitor & Site Health**
+
+* CPU Usage & Memory Stats — Free & Pro
+* Slow Query Logger — Free & Pro
+* Cron Jobs Manager — Free & Pro
+* Plugin Performance Monitor — Free & Pro
+* Options Bloat Analyzer — Free & Pro
+* Transient Cleanup — Free & Pro
+* Error Log Viewer — Pro
+* WP Config Manager — Free & Pro
 
 ---
 
@@ -338,6 +377,21 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 
 == Changelog ==
 
+= 2.0.1 =
+* Added CPU Monitor — real-time CPU usage, memory stats, load average, and system health overview
+* Added Slow Query Logger — logs queries exceeding a configurable threshold with SAVEQUERIES toggle
+* Added Cron Jobs Manager — view, run, and delete WordPress cron events with overdue detection
+* Added Plugin Performance Monitor — view plugin resource impact and deactivate sluggish plugins
+* Added Options Bloat Analyzer — inspect autoloaded options size and clean expired transients
+* Added Error Log Viewer — parse and display PHP/WordPress error log entries (Pro)
+* Added WP Config Manager — toggle SAVEQUERIES, WP_DEBUG, and WP_DEBUG_LOG from the dashboard
+* Fixed login page customizer styles not applying correctly in some themes
+* Fixed password-protected form styles not rendering on certain page builders
+* Fixed conditional display meta box default values not saving properly
+* Updated admin menu name to WPEPP Security
+* Updated documentation page references to match new menu name
+* Improved uninstall cleanup — now removes all CPU Monitor data on plugin deletion
+
 = 2.0.0 =
 * Complete rebuild with React-powered admin dashboard
 * Added real-time live preview for all form and login page styling
@@ -390,6 +444,9 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 * Initial release
 
 == Upgrade Notice ==
+
+= 2.0.1 =
+New CPU Monitor dashboard with slow query logging, cron manager, plugin performance, options bloat analyzer, and bug fixes for login/password form styles.
 
 = 2.0.0 =
 Major update — complete rebuild with React admin, login security, brute force protection, 2FA, AI blocker, content lock, and login page customizer. All v1.x settings are migrated automatically.
