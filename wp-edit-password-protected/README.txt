@@ -377,6 +377,14 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 
 == Changelog ==
 
+= 2.0.2 =
+* Added modern Full Width (Pro) layout for password-protected forms — dark gradient background, glassmorphism card, and blue submit button
+* Improved password-protected form now displays correctly out of the box even before any settings are saved
+* Improved editor customizations (form wrapper background, form container background, button color) now reliably override style defaults
+* Fixed Horizontal layout form container background not showing the correct default gray (#ededed) color
+* Fixed button text not centering correctly when custom padding was set in the editor
+* Fixed input and button padding fields now start at 0 and only override when explicitly set
+
 = 2.0.1 =
 * Added CPU Monitor — real-time CPU usage, memory stats, load average, and system health overview
 * Added Slow Query Logger — logs queries exceeding a configurable threshold with SAVEQUERIES toggle
