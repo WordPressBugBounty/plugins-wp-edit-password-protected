@@ -377,6 +377,10 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 
 == Changelog ==
 
+= 2.0.4 =
+* Fixed database table update issue 
+* Added news style 
+
 = 2.0.3 =
 * Fixed custom css issue.
 * Redesigned and updated the majority of templates.
