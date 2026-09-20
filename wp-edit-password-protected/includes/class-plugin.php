@@ -88,9 +88,10 @@ final class WPEPP_Plugin {
 		add_filter( 'comments_open', [ $this, 'conditional_display_comments_filter' ], 98, 2 );
 		add_filter( 'get_comments_number', [ $this, 'conditional_display_comments_number_filter' ], 98, 2 );
 
-		// REST API content protection.
+		// REST API content protection (CVE-2025-8945 and site-wide protection).
 		add_filter( 'rest_prepare_post', [ $this, 'protect_rest_content' ], 10, 3 );
 		add_filter( 'rest_prepare_page', [ $this, 'protect_rest_content' ], 10, 3 );
+		add_action( 'rest_api_init', [ $this, 'register_rest_content_protection' ], 99 );
 
 		// Login fail redirect.
 		add_action( 'wp_login_failed', [ $this, 'login_fail_redirect' ] );
@@ -1548,12 +1549,33 @@ final class WPEPP_Plugin {
 			$hide = true;
 		}
 
-		if ( $hide ) {
+		// Site-wide access modes (Site Password, Admin Only, Country Restriction).
+		if ( class_exists( 'WPEPP_Site_Access' ) && WPEPP_Site_Access::is_visitor_blocked() ) {
+			$hide = true;
+		}
+
+		if ( $hide && is_object( $response ) && isset( $response->data ) && is_array( $response->data ) ) {
 			$response->data['content']['rendered'] = __( 'This content is protected.', 'wp-edit-password-protected' );
 			$response->data['excerpt']['rendered']  = '';
+			if ( isset( $response->data['content']['raw'] ) ) {
+				unset( $response->data['content']['raw'] );
+			}
+			if ( isset( $response->data['excerpt']['raw'] ) ) {
+				unset( $response->data['excerpt']['raw'] );
+			}
 		}
 
 		return $response;
+	}
+
+	/**
+	 * Register REST content protection across all public post types.
+	 */
+	public function register_rest_content_protection() {
+		$post_types = get_post_types( [ 'public' => true ], 'names' );
+		foreach ( $post_types as $pt ) {
+			add_filter( "rest_prepare_{$pt}", [ $this, 'protect_rest_content' ], 10, 3 );
+		}
 	}
 
 	/**

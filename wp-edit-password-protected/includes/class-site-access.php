@@ -59,6 +59,9 @@ class WPEPP_Site_Access {
 		// Main enforcement — priority 0 to run before other template_redirect hooks.
 		add_action( 'template_redirect', [ $this, 'enforce_access' ], 0 );
 
+		// Enforce site-wide access restrictions on REST API requests (fixes CVE-2025-8945 residual).
+		add_filter( 'rest_authentication_errors', [ $this, 'enforce_rest_access' ], 99 );
+
 		// Prevent server-level & CDN page caching when access restrictions are active.
 		add_action( 'send_headers', [ $this, 'send_no_cache_headers' ] );
 	}
@@ -102,7 +105,7 @@ class WPEPP_Site_Access {
 			return true;
 		}
 
-		// REST API requests.
+		// REST API requests are handled by enforce_rest_access() filter, not template_redirect HTML.
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
 			return true;
 		}
@@ -119,6 +122,159 @@ class WPEPP_Site_Access {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Check whether the current visitor is blocked by any active site-wide access restriction.
+	 *
+	 * Used for both web template_redirect and REST API authentication checks.
+	 *
+	 * @return array|null Block info array if blocked, null if access allowed.
+	 */
+	public function get_site_access_block() {
+		// Emergency Safe Mode bypass.
+		if ( defined( 'WPEPP_SAFE_MODE' ) && WPEPP_SAFE_MODE ) {
+			return null;
+		}
+
+		// Administrators always bypass so site management is never blocked.
+		if ( current_user_can( 'manage_options' ) ) {
+			return null;
+		}
+
+		// WP-CLI or Cron.
+		if ( ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_cron() ) {
+			return null;
+		}
+
+		// Plugin preview requests with token.
+		if ( isset( $_GET['wpepp_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return null;
+		}
+
+		// 1. Country Restriction.
+		if ( ! empty( $this->settings['country_restriction_enabled'] ) ) {
+			if ( class_exists( 'WPEPP_Geo' ) && class_exists( 'WPEPP_Security' ) ) {
+				$code = WPEPP_Geo::country_for_ip( WPEPP_Security::get_client_ip() );
+				if ( '' !== $code ) {
+					$list = array_map(
+						'strtoupper',
+						array_filter( (array) ( $this->settings['country_restriction_list'] ?? [] ), 'is_string' )
+					);
+					if ( ! empty( $list ) ) {
+						$mode       = ( 'allow' === ( $this->settings['country_restriction_mode'] ?? 'block' ) ) ? 'allow' : 'block';
+						$in_list    = in_array( $code, $list, true );
+						$is_blocked = ( 'block' === $mode ) ? $in_list : ! $in_list;
+						if ( $is_blocked ) {
+							return [
+								'type'    => 'country_restriction',
+								'code'    => 'wpepp_country_restricted',
+								'message' => $this->settings['country_restriction_message'] ?? __( 'This site is not available in your region.', 'wp-edit-password-protected' ),
+								'status'  => 403,
+							];
+						}
+					}
+				}
+			}
+		}
+
+		// 2. Admin Only Mode.
+		if ( ! empty( $this->settings['admin_only_enabled'] ) ) {
+			if ( ! is_user_logged_in() ) {
+				return [
+					'type'    => 'admin_only',
+					'code'    => 'wpepp_admin_only_restricted',
+					'message' => __( 'Site is in Admin Only mode. Authentication required.', 'wp-edit-password-protected' ),
+					'status'  => 401,
+				];
+			}
+			return null;
+		}
+
+		// 3. Site Password Mode.
+		if ( ! empty( $this->settings['site_password_enabled'] ) && ! empty( $this->settings['site_password'] ) ) {
+			$bypass = $this->settings['site_password_bypass_logged_in'] ?? true;
+			if ( $bypass && is_user_logged_in() ) {
+				return null;
+			}
+
+			if ( ! $this->has_valid_site_password_cookie() ) {
+				return [
+					'type'    => 'site_password',
+					'code'    => 'wpepp_site_password_required',
+					'message' => __( 'Site password required to access this resource.', 'wp-edit-password-protected' ),
+					'status'  => 403,
+				];
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Static helper to check whether the current visitor is blocked by site-wide restrictions.
+	 *
+	 * @return bool True if blocked, false if access allowed.
+	 */
+	public static function is_visitor_blocked() {
+		static $blocked = null;
+		if ( null !== $blocked ) {
+			return $blocked;
+		}
+
+		$instance = new self();
+		$blocked  = ( null !== $instance->get_site_access_block() );
+		return $blocked;
+	}
+
+	/**
+	 * Enforce site-wide access restrictions on WordPress REST API requests.
+	 *
+	 * Blocks unauthenticated access to published posts, pages, and core endpoints
+	 * over REST when Site Password, Admin Only, or Country Restriction is active.
+	 *
+	 * @param \WP_Error|null|bool $access Existing authentication state.
+	 * @return \WP_Error|null|bool
+	 */
+	public function enforce_rest_access( $access ) {
+		// If another auth filter already produced a WP_Error, pass it through.
+		if ( is_wp_error( $access ) ) {
+			return $access;
+		}
+
+		$block = $this->get_site_access_block();
+		if ( ! $block ) {
+			return $access;
+		}
+
+		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+
+		// Allow payment/system webhooks (WooCommerce, Stripe, PayPal, Jetpack).
+		if ( false !== strpos( $request_uri, 'wc-api=' )
+			|| false !== strpos( $request_uri, 'wc-ajax=' )
+			|| false !== strpos( $request_uri, '/wp-json/wc/' )
+			|| false !== strpos( $request_uri, '/wp-json/jetpack/' ) ) {
+			return $access;
+		}
+
+		/**
+		 * Filter allowed REST route substrings when site-wide access restrictions are active.
+		 *
+		 * @param string[] $allowed_routes Allowed route substrings.
+		 * @param array    $block          Block details.
+		 */
+		$allowed_routes = apply_filters( 'wpepp_site_access_allowed_rest_routes', [], $block );
+		foreach ( (array) $allowed_routes as $allowed ) {
+			if ( '' !== $allowed && false !== strpos( $request_uri, (string) $allowed ) ) {
+				return $access;
+			}
+		}
+
+		return new \WP_Error(
+			$block['code'],
+			$block['message'],
+			[ 'status' => $block['status'] ]
+		);
 	}
 
 	/**
@@ -418,7 +574,7 @@ class WPEPP_Site_Access {
 	 *
 	 * @return bool
 	 */
-	private function has_valid_site_password_cookie() {
+	public function has_valid_site_password_cookie() {
 		if ( ! isset( $_COOKIE[ self::COOKIE_NAME ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return false;
 		}

@@ -9,7 +9,7 @@ Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Essential security, password protected, block AI crawlers, limit login attempts, country restriction, CPU monitor & login page customizer with live preview.
+Essential security: password protection, AI crawler blocking, login limits, country restrictions, CPU monitoring & live-preview login customizer.
 
 == Description ==
 
@@ -377,6 +377,9 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 8. Templates gallery — 10+ one-click designs for password forms and login pages
 
 == Changelog ==
+
+= 2.0.6 =
+* Security: Enforced site-wide access modes (Site Password, Admin Only, Country Restriction) over the WordPress REST API across all public post types (fixes CVE-2025-8945 residual; reported by Artus KG via WPScan/Automattic).
 
 = 2.0.5 =
 * Added Country Restriction — block or allow visitors by country (Cloudflare header + ipapi.co fallback, free cap 2 countries, Pro unlimited)
