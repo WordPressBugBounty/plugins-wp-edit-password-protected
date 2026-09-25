@@ -91,6 +91,8 @@ final class WPEPP_Plugin {
 		// REST API content protection (CVE-2025-8945 and site-wide protection).
 		add_filter( 'rest_prepare_post', [ $this, 'protect_rest_content' ], 10, 3 );
 		add_filter( 'rest_prepare_page', [ $this, 'protect_rest_content' ], 10, 3 );
+		add_filter( 'rest_prepare_comment', [ $this, 'protect_rest_comment' ], 10, 3 );
+		add_filter( 'rest_pre_dispatch', [ $this, 'guard_rest_dispatch' ], 10, 3 );
 		add_action( 'rest_api_init', [ $this, 'register_rest_content_protection' ], 99 );
 
 		// Login fail redirect.
@@ -120,8 +122,8 @@ final class WPEPP_Plugin {
 		// CPU Monitor.
 		new WPEPP_CPU_Monitor();
 
-		// Preview handler.
-		add_action( 'template_redirect', [ $this, 'handle_preview' ] );
+		// Preview handler — priority -10 ensures token verification runs before access gating.
+		add_action( 'template_redirect', [ $this, 'handle_preview' ], -10 );
 		add_action( 'wp_ajax_wpepp_preview', [ $this, 'ajax_preview' ] );
 
 		// AJAX password check (no-reload inline error) — handled by WPEPP_Ajax_Password.
@@ -1550,13 +1552,28 @@ final class WPEPP_Plugin {
 		}
 
 		// Site-wide access modes (Site Password, Admin Only, Country Restriction).
-		if ( class_exists( 'WPEPP_Site_Access' ) && WPEPP_Site_Access::is_visitor_blocked() ) {
+		$site_wide_blocked = ( class_exists( 'WPEPP_Site_Access' ) && WPEPP_Site_Access::is_visitor_blocked() );
+		if ( $site_wide_blocked ) {
 			$hide = true;
 		}
 
 		if ( $hide && is_object( $response ) && isset( $response->data ) && is_array( $response->data ) ) {
-			$response->data['content']['rendered'] = __( 'This content is protected.', 'wp-edit-password-protected' );
-			$response->data['excerpt']['rendered']  = '';
+			$response->data['content'] = [ 'rendered' => __( 'This content is protected.', 'wp-edit-password-protected' ) ];
+			$response->data['excerpt'] = [ 'rendered' => '' ];
+			if ( $site_wide_blocked ) {
+				$response->data['title'] = [ 'rendered' => __( 'Protected', 'wp-edit-password-protected' ) ];
+				unset(
+					$response->data['slug'],
+					$response->data['link'],
+					$response->data['guid'],
+					$response->data['author'],
+					$response->data['date'],
+					$response->data['date_gmt'],
+					$response->data['modified'],
+					$response->data['modified_gmt'],
+					$response->data['meta']
+				);
+			}
 			if ( isset( $response->data['content']['raw'] ) ) {
 				unset( $response->data['content']['raw'] );
 			}
@@ -1566,6 +1583,77 @@ final class WPEPP_Plugin {
 		}
 
 		return $response;
+	}
+
+	/**
+	 * Protect REST comments when site-wide access is active.
+	 *
+	 * @param \WP_REST_Response $response Response object.
+	 * @param \WP_Comment       $comment  Comment object.
+	 * @param \WP_REST_Request  $request  Request object.
+	 * @return \WP_REST_Response
+	 */
+	public function protect_rest_comment( $response, $comment, $request ) {
+		if ( class_exists( 'WPEPP_Site_Access' ) && WPEPP_Site_Access::is_visitor_blocked() ) {
+			if ( is_object( $response ) && isset( $response->data ) && is_array( $response->data ) ) {
+				$response->data['content']     = [ 'rendered' => __( 'This comment is protected.', 'wp-edit-password-protected' ) ];
+				$response->data['author_name'] = __( 'Anonymous', 'wp-edit-password-protected' );
+				unset(
+					$response->data['content']['raw'],
+					$response->data['author'],
+					$response->data['author_url'],
+					$response->data['author_email'],
+					$response->data['author_ip'],
+					$response->data['date'],
+					$response->data['date_gmt'],
+					$response->data['link'],
+					$response->data['meta']
+				);
+			}
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Secondary gatekeeper before REST dispatch: guarantees that no content,
+	 * metadata, comments, users, or endpoints are ever dispatched to a blocked visitor.
+	 *
+	 * @param mixed            $result  Response to return, or null to continue dispatch.
+	 * @param \WP_REST_Server  $server  REST server instance.
+	 * @param \WP_REST_Request $request Request instance.
+	 * @return mixed WP_Error if blocked, original $result otherwise.
+	 */
+	public function guard_rest_dispatch( $result, $server, $request ) {
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		if ( class_exists( 'WPEPP_Site_Access' ) && WPEPP_Site_Access::is_visitor_blocked() ) {
+			$instance = new WPEPP_Site_Access();
+			$block    = $instance->get_site_access_block();
+			if ( $block ) {
+				$allowed_routes = apply_filters( 'wpepp_site_access_allowed_rest_routes', [], $block );
+				$route          = '/' . ltrim( (string) $request->get_route(), '/' );
+
+				if ( ! empty( $allowed_routes ) && is_array( $allowed_routes ) ) {
+					foreach ( $allowed_routes as $allowed ) {
+						$allowed = '/' . trim( (string) $allowed, '/' );
+						if ( '/' !== $allowed && 0 === strpos( $route, $allowed ) ) {
+							return $result;
+						}
+					}
+				}
+
+				return new \WP_Error(
+					$block['code'],
+					$block['message'],
+					[ 'status' => $block['status'] ]
+				);
+			}
+		}
+
+		return $result;
 	}
 
 	/**

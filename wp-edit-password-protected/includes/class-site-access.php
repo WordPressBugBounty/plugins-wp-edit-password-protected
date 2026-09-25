@@ -116,11 +116,6 @@ class WPEPP_Site_Access {
 			return true;
 		}
 
-		// Plugin preview requests.
-		if ( isset( $_GET['wpepp_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			return true;
-		}
-
 		return false;
 	}
 
@@ -144,11 +139,6 @@ class WPEPP_Site_Access {
 
 		// WP-CLI or Cron.
 		if ( ( defined( 'WP_CLI' ) && WP_CLI ) || wp_doing_cron() ) {
-			return null;
-		}
-
-		// Plugin preview requests with token.
-		if ( isset( $_GET['wpepp_preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			return null;
 		}
 
@@ -230,8 +220,11 @@ class WPEPP_Site_Access {
 	/**
 	 * Enforce site-wide access restrictions on WordPress REST API requests.
 	 *
-	 * Blocks unauthenticated access to published posts, pages, and core endpoints
-	 * over REST when Site Password, Admin Only, or Country Restriction is active.
+	 * Blocks unauthenticated access to all REST routes (posts, pages, comments, users, etc.)
+	 * when Site Password, Admin Only, or Country Restriction is active.
+	 *
+	 * Decision is never derived from query parameters or raw URI substrings to prevent
+	 * parameter injection bypasses. Allowed routes must match the clean route path.
 	 *
 	 * @param \WP_Error|null|bool $access Existing authentication state.
 	 * @return \WP_Error|null|bool
@@ -247,26 +240,30 @@ class WPEPP_Site_Access {
 			return $access;
 		}
 
-		$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-
-		// Allow payment/system webhooks (WooCommerce, Stripe, PayPal, Jetpack).
-		if ( false !== strpos( $request_uri, 'wc-api=' )
-			|| false !== strpos( $request_uri, 'wc-ajax=' )
-			|| false !== strpos( $request_uri, '/wp-json/wc/' )
-			|| false !== strpos( $request_uri, '/wp-json/jetpack/' ) ) {
-			return $access;
-		}
-
 		/**
-		 * Filter allowed REST route substrings when site-wide access restrictions are active.
+		 * Filter allowed REST routes when site-wide access restrictions are active.
 		 *
-		 * @param string[] $allowed_routes Allowed route substrings.
+		 * Matching is strictly performed against the parsed route path, never raw query parameters.
+		 *
+		 * @param string[] $allowed_routes Allowed route path prefixes (e.g. ['/custom-plugin/v1/webhook']).
 		 * @param array    $block          Block details.
 		 */
 		$allowed_routes = apply_filters( 'wpepp_site_access_allowed_rest_routes', [], $block );
-		foreach ( (array) $allowed_routes as $allowed ) {
-			if ( '' !== $allowed && false !== strpos( $request_uri, (string) $allowed ) ) {
-				return $access;
+		if ( ! empty( $allowed_routes ) && is_array( $allowed_routes ) ) {
+			$current_route = untrailingslashit( $GLOBALS['wp']->query_vars['rest_route'] ?? '' );
+			if ( empty( $current_route ) && isset( $_GET['rest_route'] ) ) {
+				$current_route = untrailingslashit( sanitize_text_field( wp_unslash( $_GET['rest_route'] ) ) );
+			}
+			if ( empty( $current_route ) && ! empty( $_SERVER['PATH_INFO'] ) ) {
+				$current_route = untrailingslashit( sanitize_text_field( wp_unslash( $_SERVER['PATH_INFO'] ) ) );
+			}
+			$current_route = '/' . ltrim( (string) $current_route, '/' );
+
+			foreach ( $allowed_routes as $allowed ) {
+				$allowed = '/' . trim( (string) $allowed, '/' );
+				if ( '/' !== $allowed && 0 === strpos( $current_route, $allowed ) ) {
+					return $access;
+				}
 			}
 		}
 

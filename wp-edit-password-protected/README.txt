@@ -378,6 +378,9 @@ Yes. WPEPP works in WordPress multisite (network) installations. Each sub-site h
 
 == Changelog ==
 
+= 2.0.7 =
+* Security: Hardened REST API site-wide access enforcement — eliminated query-string bypasses, removed unverified preview parameter exemptions, added pre-dispatch error guards, and extended metadata and comment scrubbing across all endpoints (reported by Erwan Le Rousseau via WPScan/Automattic).
+
 = 2.0.6 =
 * Security: Enforced site-wide access modes (Site Password, Admin Only, Country Restriction) over the WordPress REST API across all public post types (fixes CVE-2025-8945 residual; reported by Artus KG via WPScan/Automattic).
 
