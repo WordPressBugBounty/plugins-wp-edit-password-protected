@@ -38,6 +38,9 @@ final class WPEPP_Plugin {
 	private function __construct() {
 		$this->load_includes();
 
+		// Upgrade routine for updates installed without reactivation.
+		add_action( 'plugins_loaded', [ 'WPEPP_Activator', 'maybe_upgrade' ], 20 );
+
 		add_action( 'init', [ $this, 'load_textdomain' ] );
 		add_action( 'init', [ $this, 'save_install_date' ] );
 		add_action( 'init', [ $this, 'register_post_meta_fields' ] );
@@ -70,14 +73,20 @@ final class WPEPP_Plugin {
 
 		// Content filters.
 		add_filter( 'the_password_form', [ $this, 'custom_password_form' ] );
+		add_filter( 'post_password_expires', [ $this, 'filter_post_password_expires' ] );
 		add_filter( 'the_content', [ $this, 'maybe_lock_content' ], 99 );
 		add_filter( 'get_the_excerpt', [ $this, 'maybe_lock_excerpt' ], 99, 2 );
 
 		// Hide locked posts (without excerpt) from blog/archive queries.
 		add_action( 'pre_get_posts', [ $this, 'exclude_locked_posts_from_archive' ] );
+		add_action( 'save_post', [ __CLASS__, 'invalidate_locked_posts_cache' ] );
+		add_action( 'updated_post_meta', [ __CLASS__, 'invalidate_locked_posts_cache_on_meta' ], 10, 4 );
+		add_action( 'deleted_post_meta', [ __CLASS__, 'invalidate_locked_posts_cache_on_meta' ], 10, 4 );
 
 		// Content lock redirect (must fire before output).
 		add_action( 'template_redirect', [ $this, 'maybe_redirect_locked_content' ] );
+		add_action( 'template_redirect', [ $this, 'disable_cache_for_protected_posts' ], -9999 );
+		add_action( 'litespeed_control_finalize', [ $this, 'disable_cache_for_protected_posts' ] );
 
 		// Conditional display.
 		add_filter( 'the_content', [ $this, 'conditional_display_filter' ], 98 );
@@ -100,6 +109,45 @@ final class WPEPP_Plugin {
 
 		// Security features.
 		$this->init_security();
+
+		// Firewall (basic mode runs at init 0).
+		WPEPP_Firewall::boot();
+
+		// Event store housekeeping + alerts.
+		WPEPP_Logger::schedule();
+		WPEPP_Alerts::boot();
+
+		// Settings changes into the event stream.
+		add_action( 'wpepp/settings/saved', function ( $section = '' ) {
+			WPEPP_Logger::log( 'settings_changed', sprintf( 'Settings saved: %s', $section ?: 'all' ), WPEPP_Logger::SEV_INFO, [ 'section' => (string) $section ] );
+		}, 10, 1 );
+
+		// Passkey events from the pro module.
+		add_action( 'wpepp-pro/passkey/registered', function ( $uid ) {
+			WPEPP_Logger::log( 'passkey_registered', 'Passkey registered for user #' . absint( $uid ), WPEPP_Logger::SEV_INFO, [] );
+		}, 10, 2 );
+		add_action( 'wpepp-pro/passkey/login', function ( $uid ) {
+			WPEPP_Logger::log( 'passkey_login', 'Passkey login user #' . absint( $uid ), WPEPP_Logger::SEV_INFO, [] );
+		}, 10, 2 );
+
+		// Hardening suite.
+		WPEPP_Hardening_Headers::boot();
+		WPEPP_File_Hardening::boot();
+
+		// WP-CLI.
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			require_once WPEPP_PATH . 'includes/hardening/class-cli.php';
+			WPEPP_CLI::register();
+		}
+
+		// Password policy enforcement (registration/profile/reset).
+		WPEPP_Password_Policy::init();
+		add_filter( 'wpepp/security/score_items', [ 'WPEPP_Password_Policy', 'score_item' ] );
+
+		// Scanner — scheduling only. Slices are driven exclusively by the
+		// SPA tick loop, the REST tick endpoint and the cron watchdog;
+		// never opportunistically during unrelated requests.
+		WPEPP_Scan_Engine::schedule();
 
 		// Site Access — Admin Only & Site Password.
 		new WPEPP_Site_Access();
@@ -126,11 +174,55 @@ final class WPEPP_Plugin {
 		add_action( 'template_redirect', [ $this, 'handle_preview' ], -10 );
 		add_action( 'wp_ajax_wpepp_preview', [ $this, 'ajax_preview' ] );
 
+		// Guard against third-party plugins (e.g. Polylang) returning null for locale in WP 6.5+ (TypeError in WP_Translation_Controller).
+		add_filter(
+			'locale',
+			function ( $locale ) {
+				return ( is_string( $locale ) && '' !== $locale ) ? $locale : ( get_option( 'WPLANG' ) ?: 'en_US' );
+			},
+			9999
+		);
+
 		// AJAX password check (no-reload inline error) — handled by WPEPP_Ajax_Password.
 		WPEPP_Ajax_Password::register_hooks();
 
-		// Appsero tracker.
-		$this->init_appsero();
+		// Pro bridge — fire AFTER all free modules registered so the pro
+		// plugin can safely register its own modules (3-layer contract).
+		add_action( 'plugins_loaded', function () {
+			if ( wpepp_has_pro_check() ) {
+				do_action( 'wpepp/pro/init' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- documented public API.
+			}
+			do_action( 'wpepp/loaded' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- documented public API.
+		}, 99 );
+
+		// Version handshake — warn when the active pro build is too old
+		// for this free version's module bridge.
+		if ( is_admin()
+			&& defined( 'WPEPP_PRO_VERSION' )
+			&& version_compare( WPEPP_PRO_VERSION, WPEPP_REQUIRED_PRO_VERSION, '<' )
+			&& ! defined( 'WPEPP_HANDSHAKE_NOTICE_SHOWN' ) ) {
+			define( 'WPEPP_HANDSHAKE_NOTICE_SHOWN', true );
+			add_action( 'admin_notices', [ __CLASS__, 'render_pro_version_notice' ] );
+		}
+	}
+
+	/**
+	 * Admin notice: active pro copy predates the current free version.
+	 */
+	public static function render_pro_version_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			sprintf(
+				/* translators: 1: required pro version, 2: active pro version */
+				esc_html__( 'WPEPP: your WPEPP Pro version (%2$s) is older than this free version requires (%1$s). Some Pro modules will not load until you update WPEPP Pro.', 'wp-edit-password-protected' ),
+				esc_html( WPEPP_REQUIRED_PRO_VERSION ),
+				esc_html( WPEPP_PRO_VERSION )
+			)
+		);
 	}
 
 	/**
@@ -138,7 +230,25 @@ final class WPEPP_Plugin {
 	 */
 	private function load_includes() {
 		$includes = [
-			'class-admin.php',
+			'core/class-ip.php',
+			'core/class-fw-engine.php',
+			'core/class-firewall.php',
+			'core/class-blocks.php',
+						'core/class-rate-limit.php',
+			'core/class-captcha.php',
+			'core/class-spam-guard.php',
+			'core/class-logger.php',
+			'core/class-alerts.php',
+			'core/class-password-policy.php',
+			'hardening/class-headers.php',
+			'hardening/class-file-hardening.php',
+			'hardening/class-diagnostics.php',
+			'scanner/class-issues.php',
+			'scanner/class-scan-engine.php',
+			'scanner/class-signatures.php',
+			'scanner/class-integrity.php',
+			'scanner/class-option-scan.php',
+			'dashboard/class-score.php',
 			'class-notice.php',
 			'class-docs.php',
 			'class-rest-api.php',
@@ -150,6 +260,7 @@ final class WPEPP_Plugin {
 			'class-conditional-meta-helper.php',
 			'class-totp.php',
 			'class-security.php',
+			'class-username-shield.php',
 			'class-geo.php',
 			'class-member-template.php',
 			'class-ajax-password.php',
@@ -162,18 +273,25 @@ final class WPEPP_Plugin {
 			'class-cpu-options-monitor.php',
 			'class-cpu-wp-config.php',
 			'class-cpu-monitor.php',
+			'class-db-cleaner.php',
 		];
 
 		foreach ( $includes as $file ) {
 			require_once WPEPP_PATH . 'includes/' . $file;
 		}
+
+		if ( class_exists( 'WPEPP_DB_Cleaner' ) ) {
+			WPEPP_DB_Cleaner::init();
+		}
 	}
 
 	/**
 	 * Load plugin translations.
+	 *
+	 * Note: Automatically loaded by WordPress.org since 4.6.
 	 */
 	public function load_textdomain() {
-		load_plugin_textdomain( 'wp-edit-password-protected', false, dirname( plugin_basename( WPEPP_FILE ) ) . '/languages' );
+		// WordPress.org automatically loads translations for plugins since 4.6.
 	}
 
 	/**
@@ -265,12 +383,13 @@ final class WPEPP_Plugin {
 		}
 
 		$asset = include $asset_file;
+		$build_ver = $asset['version'] . '.' . filemtime( WPEPP_PATH . 'build/index.js' );
 
 		wp_enqueue_script(
 			'wpepp-admin',
 			WPEPP_URL . '/build/index.js',
 			$asset['dependencies'],
-			$asset['version'],
+			$build_ver,
 			true
 		);
 
@@ -278,7 +397,7 @@ final class WPEPP_Plugin {
 			'wpepp-admin',
 			WPEPP_URL . '/build/index.css',
 			[ 'wp-components' ],
-			$asset['version']
+			$build_ver
 		);
 
 		wp_localize_script( 'wpepp-admin', 'wpeppData', [
@@ -289,11 +408,23 @@ final class WPEPP_Plugin {
 			'loginUrl'     => esc_url( wp_login_url() ),
 			'pluginUrl'    => esc_url( WPEPP_URL ),
 			'homeUrl'      => esc_url( home_url( '/' ) ),
+			'siteUrl'      => esc_url( home_url( '/' ) ),
+			'adminEmail'   => sanitize_text_field( get_option( 'admin_email' ) ),
 			'version'      => WPEPP_VERSION,
 			'isPro'        => wpepp_has_pro_check(),
 			'proUrl'       => esc_url( 'https://wpthemespace.com/product/wpepp-essential-security-password-protect-login-page-customizer/#pricing' ),
 			'clientIp'     => esc_html( WPEPP_Security::get_client_ip() ),
+			'adminTheme'   => get_option( 'wpepp_admin_theme', 'dark' ) === 'light' ? 'light' : 'dark',
 		] );
+
+		// Bundled QR renderer for 2FA setup (local — no external QR services).
+		wp_enqueue_script(
+			'wpepp-qrcode',
+			WPEPP_URL . '/assets/js/qrcode.min.js',
+			[],
+			'1.0.0',
+			true
+		);
 
 		// Media uploader for image uploads.
 		wp_enqueue_media();
@@ -373,8 +504,8 @@ final class WPEPP_Plugin {
 				'type'              => 'string',
 				'default'           => '',
 				'sanitize_callback' => 'sanitize_text_field',
-				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+				'auth_callback'     => function ( $allowed, $meta_key, $post_id ) {
+					return current_user_can( 'edit_post', $post_id );
 				},
 			] );
 		}
@@ -395,8 +526,8 @@ final class WPEPP_Plugin {
 				'type'              => 'string',
 				'default'           => $default,
 				'sanitize_callback' => 'sanitize_text_field',
-				'auth_callback'     => function () {
-					return current_user_can( 'edit_posts' );
+				'auth_callback'     => function ( $allowed, $meta_key, $post_id ) {
+					return current_user_can( 'edit_post', $post_id );
 				},
 			] );
 		}
@@ -408,8 +539,8 @@ final class WPEPP_Plugin {
 			'type'              => 'string',
 			'default'           => '',
 			'sanitize_callback' => 'wp_kses_post',
-			'auth_callback'     => function () {
-				return current_user_can( 'edit_posts' );
+			'auth_callback'     => function ( $allowed, $meta_key, $post_id ) {
+				return current_user_can( 'edit_post', $post_id );
 			},
 		] );
 
@@ -852,9 +983,11 @@ final class WPEPP_Plugin {
 		$current_action = '';
 		if ( ! empty( $action ) && is_string( $action ) ) {
 			$current_action = $action;
-		} elseif ( isset( $_REQUEST['action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$current_action = sanitize_text_field( wp_unslash( $_REQUEST['action'] ) );
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Reading public query var for login page stylesheet selection.
+		} elseif ( isset( $_GET['action'] ) ) {
+			$current_action = sanitize_text_field( wp_unslash( $_GET['action'] ) );
 		}
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 
 		switch ( $current_action ) {
 			case 'register':
@@ -887,6 +1020,11 @@ final class WPEPP_Plugin {
 		$css = WPEPP_Login_Customizer::generate_css( $settings );
 		if ( ! empty( $css ) ) {
 			wp_add_inline_style( 'login', wp_strip_all_tags( $css ) );
+		}
+
+		// Load the webfont when a custom logo font is configured (CSS above uses it).
+		if ( ! empty( $settings['logo']['text_font_family'] ) ) {
+			WPEPP_Login_Customizer::maybe_enqueue_google_font( $settings['logo']['text_font_family'] );
 		}
 	}
 
@@ -980,10 +1118,26 @@ final class WPEPP_Plugin {
 		if ( did_action( 'login_init' ) ) {
 			wp_add_inline_style( 'login', $css );
 		} else {
-			wp_register_style( 'wpepp-global-custom-css', false );
+			wp_register_style( 'wpepp-global-custom-css', false, [], defined( 'WPEPP_VERSION' ) ? WPEPP_VERSION : '3.0.0' );
 			wp_enqueue_style( 'wpepp-global-custom-css' );
 			wp_add_inline_style( 'wpepp-global-custom-css', $css );
 		}
+	}
+
+	/**
+	 * Filter the expiration time of the post password cookie based on Settings -> General.
+	 *
+	 * @param int $expires Current expiration timestamp.
+	 * @return int Updated expiration timestamp.
+	 */
+	public static function filter_post_password_expires( $expires ) {
+		$raw      = get_option( 'wpepp_general_settings', '{}' );
+		$settings = json_decode( (string) $raw, true );
+		$days     = isset( $settings['cookie_expiration'] ) ? (int) $settings['cookie_expiration'] : 10;
+		if ( $days < 1 ) {
+			$days = 10;
+		}
+		return time() + ( $days * DAY_IN_SECONDS );
 	}
 
 	/**
@@ -1110,6 +1264,10 @@ final class WPEPP_Plugin {
 	/**
 	 * Exclude locked posts (without show-excerpt) from blog/archive queries.
 	 *
+	 * Optimized: single lightweight ID query, cached per request and (for the
+	 * anonymous-visitor path that matters most) via object cache — replaces
+	 * the previous posts_per_page => -1 scan with per-post meta lookups.
+	 *
 	 * @param \WP_Query $query Main query object.
 	 */
 	public function exclude_locked_posts_from_archive( $query ) {
@@ -1121,24 +1279,61 @@ final class WPEPP_Plugin {
 			return;
 		}
 
-		// Find all locked posts.
-		$all_locked = get_posts( [
-			'post_type'      => 'any',
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
-			'meta_query'     => [
-				[
-					'key'   => '_wpepp_content_lock_enabled',
-					'value' => 'yes',
-				],
-			],
-		] );
+		static $computed_for_user = null;
 
-		// From locked posts, exclude those the current user can't see
-		// AND have neither show_excerpt checked NOR custom excerpt text.
+		if ( null === $computed_for_user ) {
+			$computed_for_user = self::get_hidden_locked_post_ids();
+		}
+
+		if ( empty( $computed_for_user ) ) {
+			return;
+		}
+
+		$existing = $query->get( 'post__not_in' );
+		$existing = is_array( $existing ) ? $existing : [];
+		$query->set( 'post__not_in', array_merge( $existing, $computed_for_user ) );
+	}
+
+	/**
+	 * IDs of locked posts the current visitor may not see and whose excerpt
+	 * is not exposed. Cached 5 minutes.
+	 *
+	 * @return int[]
+	 */
+	private static function get_hidden_locked_post_ids() {
+		$cache_key = 'wpepp_locked_exclude_' . md5( (string) wp_json_encode( wp_get_current_user()->roles ) );
+
+		$cached = wp_cache_get( $cache_key, 'wpepp' );
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
+		// One indexed meta query instead of a full table scan.
+		$locked_ids = get_posts(
+			[
+				'post_type'              => 'any',
+				'post_status'            => 'publish',
+				'posts_per_page'         => -1,
+				'fields'                 => 'ids',
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+				'meta_query'             => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					[
+						'key'   => '_wpepp_content_lock_enabled',
+						'value' => 'yes',
+					],
+				],
+			]
+		);
+
+		if ( empty( $locked_ids ) ) {
+			wp_cache_set( $cache_key, [], 'wpepp', 5 * MINUTE_IN_SECONDS );
+			return [];
+		}
+
 		$exclude_ids = [];
-		foreach ( $all_locked as $pid ) {
+		foreach ( $locked_ids as $pid ) {
 			if ( ! self::is_user_locked( $pid ) ) {
 				continue; // User has access — don't exclude.
 			}
@@ -1149,10 +1344,29 @@ final class WPEPP_Plugin {
 			$exclude_ids[] = $pid;
 		}
 
-		if ( ! empty( $exclude_ids ) ) {
-			$existing = $query->get( 'post__not_in' );
-			$existing = is_array( $existing ) ? $existing : [];
-			$query->set( 'post__not_in', array_merge( $existing, $exclude_ids ) );
+		wp_cache_set( $cache_key, $exclude_ids, 'wpepp', 5 * MINUTE_IN_SECONDS );
+
+		return $exclude_ids;
+	}
+
+	/**
+	 * Invalidate locked posts exclude cache on post save.
+	 */
+	public static function invalidate_locked_posts_cache() {
+		wp_cache_flush_group( 'wpepp' );
+	}
+
+	/**
+	 * Invalidate locked posts exclude cache on meta update.
+	 *
+	 * @param int    $meta_id     ID of updated metadata row.
+	 * @param int    $object_id   ID of the object metadata is for.
+	 * @param string $meta_key    Metadata key.
+	 * @param mixed  $_meta_value Metadata value.
+	 */
+	public static function invalidate_locked_posts_cache_on_meta( $meta_id, $object_id, $meta_key, $_meta_value = '' ) {
+		if ( 0 === strpos( (string) $meta_key, '_wpepp_content_lock_' ) ) {
+			wp_cache_flush_group( 'wpepp' );
 		}
 	}
 
@@ -1250,6 +1464,31 @@ final class WPEPP_Plugin {
 
 		// Unchecked — no excerpt.
 		return '';
+	}
+
+	/**
+	 * Prevent caching of password-protected posts by reverse proxies and page cache plugins.
+	 */
+	public function disable_cache_for_protected_posts() {
+		if ( ! is_singular() ) {
+			return;
+		}
+
+		$post = get_post();
+		if ( ! $post ) {
+			return;
+		}
+
+		if ( ! empty( $post->post_password ) || post_password_required( $post ) ) {
+			if ( ! headers_sent() ) {
+				nocache_headers();
+				header( 'X-LiteSpeed-Cache-Control: no-cache' );
+			}
+			do_action( 'litespeed_control_set_nocache', 'wpepp password protected' );
+			if ( class_exists( '\LiteSpeed\Control' ) ) {
+				\LiteSpeed\Control::set_nocache( 'wpepp password protected' );
+			}
+		}
 	}
 
 	/**
@@ -1582,6 +1821,15 @@ final class WPEPP_Plugin {
 			}
 		}
 
+		// Strip internal WPEPP meta from public REST responses unless user has permission to edit this post.
+		if ( ! current_user_can( 'edit_post', $post->ID ) && is_object( $response ) && isset( $response->data['meta'] ) && is_array( $response->data['meta'] ) ) {
+			foreach ( $response->data['meta'] as $meta_key => $meta_val ) {
+				if ( 0 === strpos( (string) $meta_key, '_wpepp_' ) ) {
+					unset( $response->data['meta'][ $meta_key ] );
+				}
+			}
+		}
+
 		return $response;
 	}
 
@@ -1750,9 +1998,9 @@ final class WPEPP_Plugin {
 			'max_attempts'         => 5,
 			'lockout_duration'     => 15,
 			'honeypot_enabled'     => true,
-			'disable_xmlrpc'       => false,
-			'hide_wp_version'      => false,
-			'disable_rest_users'   => false,
+			'disable_xmlrpc'       => true,
+			'hide_wp_version'      => true,
+			'disable_rest_users'   => true,
 			'recaptcha_enabled'    => false,
 			'recaptcha_site_key'   => '',
 			'recaptcha_secret_key' => '',
@@ -1760,9 +2008,9 @@ final class WPEPP_Plugin {
 			'login_log_enabled'    => true,
 			'hide_login_page'      => false,
 			'after_login_redirect' => '',
-			// AI Crawler Blocker.
-			'ai_crawler_blocker_enabled' => true,
-			'ai_crawler_block_ua'        => true,
+			// AI Crawler Blocker (Default: false to preserve AI SEO and recommendations).
+			'ai_crawler_blocker_enabled' => false,
+			'ai_crawler_block_ua'        => false,
 			'ai_crawler_bots'            => null,
 			'ai_crawler_custom_ua'       => '',
 		];
@@ -1777,20 +2025,8 @@ final class WPEPP_Plugin {
 		$settings = array_merge( $defaults, $settings );
 
 		WPEPP_Security::init( $settings );
-	}
-
-	/**
-	 * Initialize Appsero tracker.
-	 */
-	private function init_appsero() {
-		$client_file = WPEPP_PATH . 'vendor/appsero/client/src/Client.php';
-		if ( ! class_exists( 'Appsero\Client' ) && file_exists( $client_file ) ) {
-			require_once $client_file;
-		}
-
-		if ( class_exists( 'Appsero\Client' ) ) {
-			$client = new Appsero\Client( '08132ef7-0f22-4c36-9ac4-0cad92ae19de', 'WPEPP – Essential Security, Password Protect & Login Page Customizer', WPEPP_FILE );
-			$client->insights()->init();
+		if ( class_exists( 'WPEPP_Spam_Guard' ) ) {
+			WPEPP_Spam_Guard::init( $settings );
 		}
 	}
 }
@@ -1817,10 +2053,14 @@ function wpepp_generate_preview_token() {
  * @return bool
  */
 function wpepp_validate_preview_token( $token ) {
+	if ( ! is_user_logged_in() || ! current_user_can( 'manage_options' ) ) {
+		return false;
+	}
+
 	$token   = sanitize_text_field( $token );
 	$user_id = get_transient( 'wpepp_preview_' . $token );
 
-	if ( ! $user_id || ! user_can( $user_id, 'manage_options' ) ) {
+	if ( ! $user_id || (int) $user_id !== get_current_user_id() ) {
 		return false;
 	}
 

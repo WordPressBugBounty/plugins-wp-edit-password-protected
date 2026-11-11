@@ -193,7 +193,26 @@ class WPEPP_Frontend {
 			?>
 			var wpeppSiteLogo = <?php echo wp_json_encode( $preview_site_logo ? esc_url( $preview_site_logo ) : '' ); ?>;
 			var wpeppSiteName = <?php echo wp_json_encode( get_bloginfo( 'name' ) ); ?>;
+			function wpeppSanitizeHtml( raw ) {
+				var parser = new DOMParser();
+				var doc = parser.parseFromString( raw || '', 'text/html' );
+				var dangerous = doc.querySelectorAll( 'script, iframe, object, embed, link' );
+				dangerous.forEach( function( el ) { el.remove(); } );
+				var all = doc.querySelectorAll( '*' );
+				all.forEach( function( el ) {
+					for ( var i = el.attributes.length - 1; i >= 0; i-- ) {
+						var attr = el.attributes[i];
+						if ( attr.name.toLowerCase().indexOf('on') === 0 || attr.value.toLowerCase().indexOf('javascript:') === 0 ) {
+							el.removeAttribute( attr.name );
+						}
+					}
+				} );
+				return doc.body.innerHTML;
+			}
 			window.addEventListener( 'message', function( event ) {
+				if ( event.origin !== window.location.origin ) {
+					return;
+				}
 				if ( event.data && event.data.type === 'wpepp_preview_css' ) {
 					document.getElementById( 'wpepp-preview-css' ).textContent = event.data.css;
 				}
@@ -254,7 +273,7 @@ class WPEPP_Frontend {
 					var topH = document.getElementById( 'wpepp-top-header' );
 					if ( topH ) topH.textContent = s.top_header || '';
 					var topC = document.getElementById( 'wpepp-top-content' );
-					if ( topC ) topC.innerHTML = s.top_content || '';
+					if ( topC ) topC.innerHTML = wpeppSanitizeHtml( s.top_content || '' );
 
 					/* Bottom text */
 					var botText = document.getElementById( 'wpepp-bottom-text' );
@@ -265,7 +284,7 @@ class WPEPP_Frontend {
 					var botH = document.getElementById( 'wpepp-bottom-header' );
 					if ( botH ) botH.textContent = s.bottom_header || '';
 					var botC = document.getElementById( 'wpepp-bottom-content' );
-					if ( botC ) botC.innerHTML = s.bottom_content || '';
+					if ( botC ) botC.innerHTML = wpeppSanitizeHtml( s.bottom_content || '' );
 
 					/* Form label & button */
 					var lbl = document.getElementById( 'wpepp-form-label' );
@@ -522,8 +541,8 @@ class WPEPP_Frontend {
 		<div class="wpepp-password-form wpepp-style-<?php echo esc_attr( $style ); ?>" id="wpepp-pw-preview">
 			<!-- Logo -->
 			<div class="wpepp-form-logo" id="wpepp-form-logo" style="<?php echo $logo_show ? '' : 'display:none;'; ?>">
-				<img id="wpepp-logo-img" src="<?php echo $logo_img_src ? esc_url( $logo_img_src ) : ''; ?>" alt="" style="<?php echo $logo_img_show ? '' : 'display:none;'; ?>object-fit:contain;<?php echo $logo_img_show ? 'width:' . $logo_width . 'px;height:' . $logo_height . 'px;' : ''; ?>" data-has-src="<?php echo $logo_img_src ? '1' : '0'; ?>">
-				<span id="wpepp-logo-text" class="wpepp-form-logo-text" style="<?php echo $logo_txt_show ? '' : 'display:none;'; ?>font-size:<?php echo $logo_txt_fs; ?>px;color:<?php echo $logo_txt_color; ?>;"><?php echo esc_html( $logo_txt_val ); ?></span>
+				<img id="wpepp-logo-img" src="<?php echo $logo_img_src ? esc_url( $logo_img_src ) : ''; ?>" alt="" style="<?php echo $logo_img_show ? '' : 'display:none;'; ?>object-fit:contain;<?php echo $logo_img_show ? 'width:' . esc_attr( $logo_width ) . 'px;height:' . esc_attr( $logo_height ) . 'px;' : ''; ?>" data-has-src="<?php echo $logo_img_src ? '1' : '0'; ?>">
+				<span id="wpepp-logo-text" class="wpepp-form-logo-text" style="<?php echo $logo_txt_show ? '' : 'display:none;'; ?>font-size:<?php echo esc_attr( $logo_txt_fs ); ?>px;color:<?php echo esc_attr( $logo_txt_color ); ?>;"><?php echo esc_html( $logo_txt_val ); ?></span>
 			</div>
 
 			<!-- Error top -->

@@ -1,6 +1,6 @@
 <?php
 /**
- * Security features — login limiter, honeypot, XML-RPC, REST enum, reCAPTCHA, custom login URL, logging.
+ * Security features â€” login limiter, honeypot, XML-RPC, REST enum, reCAPTCHA, custom login URL, logging.
  *
  * @package wpepp
  * @since   2.0.0
@@ -19,17 +19,46 @@ class WPEPP_Security {
 	 * @param array $settings Decoded security settings array.
 	 */
 	public static function init( $settings ) {
-		// Login limiter (free).
+		/* ─── Emergency Safe Mode Notice ─── */
+		add_action( 'admin_notices', [ __CLASS__, 'render_safe_mode_notice' ] );
+
+		/* ─── Block Center (FREE) ─── */
+		add_action( 'init', [ __CLASS__, 'check_blocked_table' ], 1 );
+		WPEPP_Blocks::schedule_cron();
+
+		/* â”€â”€â”€ Self-service unlock (FREE) â”€â”€â”€ */
+		if ( ! empty( $settings['login_limit_enabled'] ) ) {
+			add_action( 'init', [ __CLASS__, 'handle_unlock_request' ], 2 );
+			add_action( 'init', [ __CLASS__, 'handle_unlock_token' ], 2 );
+			add_action( 'login_form', [ __CLASS__, 'render_unlock_link' ] );
+			add_filter( 'login_message', [ __CLASS__, 'render_unlock_notice' ] );
+		}
+
+		/* â”€â”€â”€ Rate Limiting (FREE) â”€â”€â”€ */
+		if ( ! empty( $settings['rate_limit_enabled'] ) ) {
+			WPEPP_Rate_Limit::init();
+		}
+
+		/* â”€â”€â”€ Login limiter (free) â”€â”€ */
 		if ( ! empty( $settings['login_limit_enabled'] ) ) {
 			add_filter( 'authenticate', [ __CLASS__, 'check_login_lockout' ], 30, 3 );
 			add_action( 'wp_login_failed', [ __CLASS__, 'record_failed_login' ] );
 			add_action( 'wp_login', [ __CLASS__, 'record_successful_login' ], 10, 2 );
 		}
 
+		// Login log retention cron removed — WPEPP_DB_Cleaner::cron_maintenance() owns all pruning (Pro + auto-prune gated).
+
 		// Honeypot field (free).
 		if ( ! empty( $settings['honeypot_enabled'] ) ) {
 			add_action( 'login_form', [ __CLASS__, 'render_honeypot_field' ] );
 			add_filter( 'authenticate', [ __CLASS__, 'check_honeypot' ], 25, 1 );
+		}
+
+		// Auto-check Remember Me (free) — pre-selects "Remember Me" to persist logins for 14 days across browser close.
+		$auto_remember = ! array_key_exists( 'remember_me_auto_check', $settings ) || ! empty( $settings['remember_me_auto_check'] );
+		if ( $auto_remember ) {
+			add_action( 'login_form', [ __CLASS__, 'auto_check_remember_me' ] );
+			add_action( 'login_footer', [ __CLASS__, 'auto_check_remember_me' ] );
 		}
 
 		// Disable XML-RPC (free).
@@ -49,28 +78,33 @@ class WPEPP_Security {
 			add_filter( 'rest_endpoints', [ __CLASS__, 'disable_user_endpoints' ] );
 		}
 
-		// Pro-only features.
-		if ( wpepp_has_pro_check() ) {
-			// reCAPTCHA.
-			if ( ! empty( $settings['recaptcha_enabled'] ) && ! empty( $settings['recaptcha_site_key'] ) ) {
-				add_action( 'login_enqueue_scripts', [ __CLASS__, 'enqueue_recaptcha' ] );
-				add_action( 'login_form', [ __CLASS__, 'render_recaptcha' ] );
-				add_filter( 'authenticate', [ __CLASS__, 'verify_recaptcha' ], 20, 1 );
-			}
+		/* â”€â”€â”€ CAPTCHA (Pro) â€” unified provider layer â”€â”€â”€ */
+		if ( wpepp_has_pro_check()
+			&& ! empty( $settings['captcha_enabled'] ?? $settings['recaptcha_enabled'] )
+			&& '' !== WPEPP_Captcha::provider() ) {
 
-			// Custom login URL.
-			if ( ! empty( $settings['custom_login_url'] ) ) {
-				add_action( 'init', [ __CLASS__, 'handle_custom_login_url' ] );
-				add_filter( 'site_url', [ __CLASS__, 'filter_login_url' ], 10, 4 );
-				add_filter( 'wp_redirect', [ __CLASS__, 'filter_login_redirect' ], 10, 2 );
-			}
+			add_action( 'login_enqueue_scripts', [ 'WPEPP_Captcha', 'render_widget' ] ); // scripts only enqueue on login screen.
+			add_action( 'login_form', [ __CLASS__, 'render_captcha_widget' ] );
+			add_filter( 'authenticate', [ __CLASS__, 'verify_captcha_on_login' ], 20, 1 );
 
-			// Login logging.
-			if ( ! empty( $settings['login_log_enabled'] ) ) {
-				if ( empty( $settings['login_limit_enabled'] ) ) {
-					add_action( 'wp_login_failed', [ __CLASS__, 'record_failed_login' ] );
-					add_action( 'wp_login', [ __CLASS__, 'record_successful_login' ], 10, 2 );
-				}
+			if ( ! empty( $settings['reg_recaptcha_enabled'] ?? $settings['reg_captcha_enabled'] ) ) {
+				add_action( 'register_form', [ __CLASS__, 'render_captcha_widget' ] );
+				add_filter( 'registration_errors', [ __CLASS__, 'verify_captcha_on_register' ], 10, 3 );
+			}
+		}
+
+		/* ─── Custom Login URL (Free) ─── */
+		if ( ! empty( $settings['custom_login_url'] ) ) {
+			add_action( 'init', [ __CLASS__, 'handle_custom_login_url' ] );
+			add_filter( 'site_url', [ __CLASS__, 'filter_login_url' ], 10, 4 );
+			add_filter( 'wp_redirect', [ __CLASS__, 'filter_login_redirect' ], 10, 2 );
+		}
+
+		/* â”€â”€â”€ Login logging. â”€â”€â”€ */
+		if ( wpepp_has_pro_check() && ! empty( $settings['login_log_enabled'] ) ) {
+			if ( empty( $settings['login_limit_enabled'] ) ) {
+				add_action( 'wp_login_failed', [ __CLASS__, 'record_failed_login' ] );
+				add_action( 'wp_login', [ __CLASS__, 'record_successful_login' ], 10, 2 );
 			}
 		}
 
@@ -79,8 +113,8 @@ class WPEPP_Security {
 			add_action( 'init', [ __CLASS__, 'handle_hide_login_page' ], 1 );
 		}
 
-		// After login redirect (free).
-		if ( ! empty( $settings['after_login_redirect'] ) ) {
+		// After login redirect (Pro).
+		if ( wpepp_has_pro_check() && ! empty( $settings['after_login_redirect'] ) ) {
 			add_filter( 'login_redirect', [ __CLASS__, 'filter_after_login_redirect' ], 99, 3 );
 			add_filter( 'allowed_redirect_hosts', [ __CLASS__, 'allow_after_login_redirect_host' ] );
 		}
@@ -88,7 +122,7 @@ class WPEPP_Security {
 		// Auto-login token handler (free).
 		add_action( 'init', [ __CLASS__, 'handle_auto_login_token' ] );
 
-		/* ─── IP Management (Pro) ─── */
+		/* â”€â”€â”€ IP Management (Pro) â”€â”€â”€ */
 		if ( wpepp_has_pro_check() ) {
 			if ( ! empty( $settings['ip_blocklist'] ) || ! empty( $settings['ip_allowlist'] ) ) {
 				add_action( 'init', [ __CLASS__, 'check_ip_blocklist' ], 1 );
@@ -96,7 +130,7 @@ class WPEPP_Security {
 			}
 		}
 
-		/* ─── AI Crawler Blocker (Free) ─── */
+		/* â”€â”€â”€ AI Crawler Blocker (Free) â”€â”€â”€ */
 		if ( ! empty( $settings['ai_crawler_blocker_enabled'] ) ) {
 			// Block via robots.txt.
 			add_filter( 'robots_txt', [ __CLASS__, 'filter_robots_txt' ], 100, 2 );
@@ -107,17 +141,25 @@ class WPEPP_Security {
 			}
 		}
 
-		/* ─── Two-Factor Authentication (Pro) ─── */
-		if ( wpepp_has_pro_check() && ! empty( $settings['two_factor_enabled'] ) ) {
+		/* â”€â”€â”€ Two-Factor Authentication (FREE as of 3.0 â€” tier move) â”€â”€â”€ */
+		if ( ! empty( $settings['two_factor_enabled'] ) ) {
 			add_action( 'login_form', [ __CLASS__, 'render_2fa_field' ] );
 			add_filter( 'authenticate', [ __CLASS__, 'verify_2fa_on_login' ], 99, 3 );
 			add_action( 'show_user_profile', [ __CLASS__, 'render_2fa_user_profile' ] );
 			add_action( 'edit_user_profile', [ __CLASS__, 'render_2fa_user_profile' ] );
 			add_action( 'personal_options_update', [ __CLASS__, 'save_2fa_user_profile' ] );
 			add_action( 'edit_user_profile_update', [ __CLASS__, 'save_2fa_user_profile' ] );
+
+			// Bundled QR renderer â€” secrets never leave the browser (B3).
+			add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue_qr_library' ] );
 		}
 
-		/* ─── Registration Protection ─── */
+		/* â”€â”€â”€ Username Shield (FREE) â”€â”€â”€ */
+		if ( ! empty( $settings['username_shield_enabled'] ) ) {
+			WPEPP_Username_Shield::init( $settings );
+		}
+
+		/* â”€â”€â”€ Registration Protection â”€â”€â”€ */
 
 		// Registration honeypot (free).
 		if ( ! empty( $settings['reg_honeypot_enabled'] ) ) {
@@ -132,15 +174,7 @@ class WPEPP_Security {
 
 		// Pro-only registration features.
 		if ( wpepp_has_pro_check() ) {
-			// reCAPTCHA on registration (reuses existing keys).
-			if ( ! empty( $settings['reg_recaptcha_enabled'] ) && ! empty( $settings['recaptcha_site_key'] ) ) {
-				add_action( 'register_form', [ __CLASS__, 'render_recaptcha' ] );
-				add_filter( 'registration_errors', [ __CLASS__, 'check_reg_recaptcha' ], 10, 3 );
-				// Ensure reCAPTCHA script is loaded on registration page too.
-				if ( empty( $settings['recaptcha_enabled'] ) ) {
-					add_action( 'login_enqueue_scripts', [ __CLASS__, 'enqueue_recaptcha' ] );
-				}
-			}
+			// CAPTCHA on registration is wired by the unified provider layer above.
 
 			// Disposable email blocker.
 			if ( ! empty( $settings['reg_block_disposable_emails'] ) ) {
@@ -161,7 +195,222 @@ class WPEPP_Security {
 		}
 	}
 
-	/* ─── Login Limiter ─── */
+	/* â”€â”€â”€ Block Center â”€â”€â”€ */
+
+	/**
+	 * Front-end enforcement of wpepp_blocks entries (init prio 1).
+	 */
+	public static function check_blocked_table() {
+		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return;
+		}
+
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return;
+		}
+
+		if ( self::is_safe_mode() ) {
+			return;
+		}
+
+		$ip = self::get_client_ip();
+
+		$block = WPEPP_Blocks::find_active_block( $ip );
+
+		if ( null === $block || ! is_object( $block ) ) {
+			return;
+		}
+
+		WPEPP_Blocks::bump_hit_count( (int) $block->id );
+
+		status_header( 403 );
+		nocache_headers();
+		wp_die(
+			esc_html__( 'Your IP address has been blocked from accessing this site.', 'wp-edit-password-protected' ),
+			esc_html__( 'Access Denied', 'wp-edit-password-protected' ),
+			[ 'response' => 403 ]
+		);
+	}
+
+	/* â”€â”€â”€ Self-service unlock â”€â”€â”€ */
+
+	/**
+	 * Render the "locked out?" link under the login form.
+	 */
+	public static function render_unlock_link() {
+		$s = json_decode( (string) get_option( 'wpepp_security_settings', '{}' ), true );
+
+		if ( empty( $s['unlock_emails_enabled'] ) || ! self::is_ip_locked( self::get_client_ip() ) ) {
+			return;
+		}
+
+		$target = admin_url( 'admin-post.php' );
+
+		?>
+		<div style="margin-top:12px;text-align:center;">
+			<form method="post" action="<?php echo esc_url( $target ); ?>">
+				<?php wp_nonce_field( 'wpepp_unlock', 'wpepp_unlock_nonce' ); ?>
+				<input type="hidden" name="action" value="wpepp_send_unlock" />
+				<label for="wpepp-unlock-email" class="screen-reader-text"><?php esc_html_e( 'Your email address', 'wp-edit-password-protected' ); ?></label>
+				<input type="email" id="wpepp-unlock-email" name="wpepp_unlock_email" size="24"
+					placeholder="<?php esc_attr_e( 'Your email address', 'wp-edit-password-protected' ); ?>" required />
+				<button type="submit" class="button button-secondary">
+					<?php esc_html_e( 'Email me an unlock link', 'wp-edit-password-protected' ); ?>
+				</button>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Show the confirmation notice after a successful unlock-email request.
+	 *
+	 * @param string|\WP_Error $message Login messages.
+	 * @return string
+	 */
+	public static function render_unlock_notice( $message ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only flag set by our own redirect.
+		if ( isset( $_GET['wpepp_unlock_sent'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['wpepp_unlock_sent'] ) ) ) {
+			$message .= '<p class="message">' . esc_html__( 'If that address matches, an unlock link has been sent. Check your inbox.', 'wp-edit-password-protected' ) . '</p>';
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['wpepp_unlocked'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['wpepp_unlocked'] ) ) ) {
+			$message .= '<p class="message">' . esc_html__( 'You have been unlocked. You may log in now.', 'wp-edit-password-protected' ) . '</p>';
+		}
+
+		return $message;
+	}
+
+	/**
+	 * Handle "send unlock link" submissions (admin-post.php).
+	 */
+	public static function handle_unlock_request() {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- verified below.
+		if ( ! isset( $_POST['wpepp_unlock_nonce'], $_POST['action'] )
+			|| 'wpepp_send_unlock' !== sanitize_key( wp_unslash( $_POST['action'] ) ) ) {
+			return;
+		}
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wpepp_unlock_nonce'] ) ), 'wpepp_unlock' ) ) {
+			wp_die(
+				esc_html__( 'Security check failed.', 'wp-edit-password-protected' ),
+				esc_html__( 'Error', 'wp-edit-password-protected' ),
+				[ 'response' => 403 ]
+			);
+		}
+
+		$email = isset( $_POST['wpepp_unlock_email'] )
+			? sanitize_email( wp_unslash( $_POST['wpepp_unlock_email'] ) )
+			: '';
+
+		$redirect = add_query_arg( 'wpepp_unlock_sent', '1', wp_login_url() );
+
+		$s = json_decode( (string) get_option( 'wpepp_security_settings', '{}' ), true );
+
+		if ( empty( $s['unlock_emails_enabled'] ) || ! is_email( $email ) ) {
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		// Only the configured alert/admin address may request unlocks.
+		$allowed = array_filter( [
+			get_option( 'admin_email', '' ),
+			is_array( $s ) ? ( $s['alert_email'] ?? '' ) : '',
+		] );
+
+		if ( ! in_array( strtolower( $email ), array_map( 'strtolower', $allowed ), true ) ) {
+			wp_safe_redirect( $redirect ); // Same response â€” no oracle.
+			exit;
+		}
+
+		// Rate limit: 3 requests per hour per IP.
+		$rl_key = 'wpepp_unlock_rl_' . md5( self::get_client_ip() );
+		$n      = (int) get_transient( $rl_key );
+
+		if ( $n >= 3 ) {
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		set_transient( $rl_key, $n + 1, HOUR_IN_SECONDS );
+
+		// Single-use token, valid 15 minutes.
+		$token = wp_generate_password( 32, false, false );
+		set_transient( 'wpepp_unlock_token_' . $token, self::get_client_ip(), 15 * MINUTE_IN_SECONDS );
+
+		$link = add_query_arg( 'wpepp_unlock', $token, wp_login_url() );
+
+		$subject = sprintf(
+			/* translators: %s: site name */
+			__( '[%s] Unlock your access', 'wp-edit-password-protected' ),
+			get_bloginfo( 'name' )
+		);
+
+		$text = sprintf(
+			/* translators: %s: unlock link */
+			__( "Someone requested an unlock link for your IP on %1\$s.\n\nOpen this single-use link within 15 minutes:\n%2\$s\n\nIf you did not request this, ignore this email.", 'wp-edit-password-protected' ),
+			get_bloginfo( 'name' ),
+			$link
+		);
+
+		wp_mail( $email, $subject, $text );
+
+		do_action( 'wpepp/unlock/link_sent', $email, self::get_client_ip() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- public event API.
+
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * Consume a unlock token â€” clears failed rows for the requesting IP.
+	 */
+	public static function handle_unlock_token() {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- bearer token validated below.
+		$token = isset( $_GET['wpepp_unlock'] ) ? sanitize_text_field( wp_unslash( $_GET['wpepp_unlock'] ) ) : '';
+
+		if ( '' === $token || strlen( $token ) > 64 || false !== strpos( $token, '&' ) ) {
+			return;
+		}
+
+		$key   = 'wpepp_unlock_token_' . $token;
+		$value = get_transient( $key );
+
+		delete_transient( $key ); // Single use regardless of outcome.
+
+		if ( false === $value || '' === $value ) {
+			return;
+		}
+
+		$ip = (string) $value;
+
+		if ( self::login_log_table_exists() ) {
+			$table = $wpdb->prefix . 'wpepp_login_log';
+
+			$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->prepare(
+					"DELETE FROM %i WHERE ip_address = %s AND status = 'failed'",
+					$table,
+					sanitize_text_field( $ip )
+				)
+			);
+		}
+
+		// Clear limiter guard transients so the next attempt starts fresh.
+		delete_transient( 'wpepp_lockout_row_' . md5( $ip ) );
+
+		wp_cache_delete( 'wpepp_dashboard_stats', 'wpepp' );
+
+		do_action( 'wpepp/unlock/consumed', $ip ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- public event API.
+
+		wp_safe_redirect( add_query_arg( 'wpepp_unlocked', '1', wp_login_url() ) );
+		exit;
+	}
+
+	/* â”€â”€â”€ Login Limiter â”€â”€â”€ */
 
 	/**
 	 * Check if the IP is locked out before authenticating.
@@ -172,12 +421,13 @@ class WPEPP_Security {
 	 * @return \WP_User|\WP_Error|null
 	 */
 	public static function check_login_lockout( $user, $username, $password ) {
-		if ( empty( $username ) ) {
+		if ( empty( $username ) || self::is_safe_mode() ) {
 			return $user;
 		}
 
 		$ip = self::get_client_ip();
 		if ( self::is_ip_locked( $ip ) ) {
+			self::log_lockout_once( $ip, $username );
 			return new \WP_Error(
 				'wpepp_lockout',
 				__( 'Too many failed login attempts. Please try again later.', 'wp-edit-password-protected' )
@@ -185,6 +435,76 @@ class WPEPP_Security {
 		}
 
 		return $user;
+	}
+
+	/**
+	 * Record a single 'lockout' log row per IP per lockout window so the
+	 * dashboard can distinguish lockouts from plain failures (B11).
+	 *
+	 * @param string $ip       Locked IP.
+	 * @param string $username Attempted username.
+	 */
+	private static function log_lockout_once( $ip, $username = '' ) {
+		$guard = 'wpepp_lockout_row_' . md5( (string) $ip );
+
+		if ( get_transient( $guard ) ) {
+			return;
+		}
+
+		$raw      = get_option( 'wpepp_security_settings', '{}' );
+		$settings = is_array( json_decode( $raw, true ) ) ? json_decode( $raw, true ) : [];
+		$duration = max( 1, absint( $settings['lockout_duration'] ?? 15 ) );
+
+		set_transient( $guard, 1, $duration * MINUTE_IN_SECONDS );
+
+		self::log_attempt( sanitize_user( $username ), 'lockout' );
+
+		WPEPP_Logger::log(
+			'lockout',
+			sprintf( 'Locked out %s after repeated failures (%s)', (string) $ip, $username ),
+			WPEPP_Logger::SEV_WARN,
+			[ 'duration_min' => $duration ]
+		);
+
+		if ( class_exists( 'WPEPP_Alerts' ) ) {
+			WPEPP_Alerts::on_lockout( (string) $ip, (string) $username );
+		}
+	}
+
+	/**
+	 * Daily cron: prune old rows from the login log table (B18).
+	 */
+	public static function prune_login_log() {
+		if ( class_exists( 'WPEPP_DB_Cleaner' ) ) {
+			WPEPP_DB_Cleaner::purge_all_old_logs();
+			return;
+		}
+		global $wpdb;
+
+		$raw      = get_option( 'wpepp_security_settings', '{}' );
+		$settings = is_array( json_decode( $raw, true ) ) ? json_decode( $raw, true ) : [];
+		$retention = absint( $settings['login_log_retention_days'] ?? 30 );
+
+		if ( $retention <= 0 ) {
+			return; // 0 = keep forever.
+		}
+
+		if ( ! self::login_log_table_exists() ) {
+			return;
+		}
+
+		$table = $wpdb->prefix . 'wpepp_login_log';
+		$cutoff = gmdate( 'Y-m-d H:i:s', time() - ( $retention * DAY_IN_SECONDS ) );
+
+		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->prepare(
+				'DELETE FROM %i WHERE created_at < %s',
+				$table,
+				$cutoff
+			)
+		);
+
+		wp_cache_delete( 'wpepp_login_log_exists', 'wpepp' );
 	}
 
 	/**
@@ -215,6 +535,10 @@ class WPEPP_Security {
 	private static function log_attempt( $username, $status ) {
 		global $wpdb;
 
+		if ( ! in_array( $status, [ 'success', 'failed', 'lockout' ], true ) ) {
+			return;
+		}
+
 		$table = $wpdb->prefix . 'wpepp_login_log';
 
 		if ( ! self::login_log_table_exists( true ) ) {
@@ -234,15 +558,88 @@ class WPEPP_Security {
 			],
 			[ '%s', '%s', '%s', '%s' ]
 		);
+
+		// Keep dashboard counters fresh under persistent object caches.
+		wp_cache_delete( 'wpepp_dashboard_stats', 'wpepp' );
+		wp_cache_delete( 'wpepp_login_log_100', 'wpepp' );
+		wp_cache_delete( 'wpepp_login_log_50', 'wpepp' );
+	}
+
+	/**
+	 * Emergency Safe Mode Check.
+	 *
+	 * Allows administrators locked out of their site to temporarily bypass all
+	 * login lockouts, rate limiting, and firewall blocks by:
+	 * 1. Defining constant WPEPP_SAFE_MODE in wp-config.php, OR
+	 * 2. Creating an empty file named wpepp-safe-mode.txt (or wpepp-safe-mode) in wp-content/ or ABSPATH.
+	 *
+	 * In Safe Mode:
+	 * - IP blocking and login limiter lockouts are bypassed.
+	 * - Firewall inspection is bypassed.
+	 *
+	 * @param bool $force_refresh Force re-check bypassing static request cache.
+	 * @return bool
+	 */
+	public static function is_safe_mode( $force_refresh = false ) {
+		static $is_safe = null;
+		if ( null !== $is_safe && ! $force_refresh ) {
+			return $is_safe;
+		}
+
+		if ( defined( 'WPEPP_SAFE_MODE' ) && WPEPP_SAFE_MODE ) {
+			$is_safe = true;
+			return true;
+		}
+
+		$files = [
+			( defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR : ABSPATH . 'wp-content' ) . '/wpepp-safe-mode.txt',
+			( defined( 'WP_CONTENT_DIR' ) ? WP_CONTENT_DIR : ABSPATH . 'wp-content' ) . '/wpepp-safe-mode',
+			ABSPATH . 'wpepp-safe-mode.txt',
+		];
+
+		foreach ( $files as $file ) {
+			if ( file_exists( $file ) ) {
+				$is_safe = true;
+				return true;
+			}
+		}
+
+		$is_safe = false;
+		return false;
+	}
+
+	/**
+	 * Display an emergency Safe Mode alert in the admin dashboard.
+	 */
+	public static function render_safe_mode_notice() {
+		if ( ! self::is_safe_mode() || ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		echo '<div class="notice notice-warning" style="border-left-color: #d63638; background: #fff8f8; padding: 12px 14px;">' .
+			'<p style="margin: 0; font-size: 13px;">' .
+			'<strong>' . esc_html__( '⚠️ WPEPP Emergency Safe Mode is Active!', 'wp-edit-password-protected' ) . '</strong> ' .
+			esc_html__( 'All firewall, IP blocking, and login lockout restrictions are temporarily bypassed. Delete wpepp-safe-mode.txt (or unset WPEPP_SAFE_MODE) to restore normal security protection.', 'wp-edit-password-protected' ) .
+			'</p></div>';
 	}
 
 	/**
 	 * Check if an IP is currently locked out.
 	 *
+	 * Uses per-request memory caching and respects emergency safe mode.
+	 *
 	 * @param string $ip IP address.
 	 * @return bool
 	 */
-	private static function is_ip_locked( $ip ) {
+	public static function is_ip_locked( $ip ) {
+		if ( self::is_safe_mode() ) {
+			return false;
+		}
+
+		static $locked_cache = [];
+		if ( isset( $locked_cache[ $ip ] ) ) {
+			return $locked_cache[ $ip ];
+		}
+
 		global $wpdb;
 
 		$raw      = get_option( 'wpepp_security_settings', '{}' );
@@ -254,6 +651,7 @@ class WPEPP_Security {
 		$table = $wpdb->prefix . 'wpepp_login_log';
 
 		if ( ! self::login_log_table_exists( true ) ) {
+			$locked_cache[ $ip ] = false;
 			return false;
 		}
 
@@ -264,12 +662,13 @@ class WPEPP_Security {
 				 WHERE ip_address = %s AND status = 'failed'
 				 AND created_at > DATE_SUB( NOW(), INTERVAL %d MINUTE )",
 				$table,
-				sanitize_text_field( $ip ),
+				sanitize_text_field( (string) $ip ),
 				$duration
 			)
 		);
 
-		return $count >= $max;
+		$locked_cache[ $ip ] = ( $count >= $max );
+		return $locked_cache[ $ip ];
 	}
 
 	/**
@@ -314,86 +713,51 @@ class WPEPP_Security {
 	/**
 	 * Get client IP.
 	 *
-	 * Forwarded headers (CF-Connecting-IP, X-Forwarded-For, X-Real-IP) are
-	 * trivially spoofable and are ONLY honoured when the direct peer
-	 * (REMOTE_ADDR) is a trusted proxy. Sites behind Cloudflare/Nginx must
-	 * register their proxy IPs/CIDRs via the `wpepp_trusted_proxies` filter,
-	 * otherwise REMOTE_ADDR is used (spoof-proof default).
+	 * Delegates to the core IP service: forwarded headers are honoured ONLY
+	 * when REMOTE_ADDR is a registered trusted proxy (spoof-proof default).
+	 * Register proxies via security setting `trusted_proxies` or the
+	 * `wpepp_trusted_proxies` filter.
 	 *
 	 * @return string
 	 */
 	public static function get_client_ip() {
-		$remote = isset( $_SERVER['REMOTE_ADDR'] )
-			? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
-			: '0.0.0.0';
-		$remote = filter_var( $remote, FILTER_VALIDATE_IP ) ? $remote : '0.0.0.0';
-
-		// Only consult forwarded headers when the direct peer is a trusted proxy.
-		if ( ! self::is_trusted_proxy( $remote ) ) {
-			return $remote;
-		}
-
-		$headers = [
-			'HTTP_CF_CONNECTING_IP', // Cloudflare.
-			'HTTP_X_FORWARDED_FOR',  // Most reverse proxies.
-			'HTTP_X_REAL_IP',        // Nginx.
-		];
-
-		foreach ( $headers as $header ) {
-			if ( empty( $_SERVER[ $header ] ) ) {
-				continue;
-			}
-
-			$value = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
-
-			// X-Forwarded-For may contain a comma-separated list; take the first (client) IP.
-			if ( 'HTTP_X_FORWARDED_FOR' === $header && false !== strpos( $value, ',' ) ) {
-				$value = trim( explode( ',', $value )[0] );
-			}
-
-			if ( filter_var( $value, FILTER_VALIDATE_IP ) ) {
-				return $value;
-			}
-		}
-
-		return $remote;
+		return WPEPP_Core_Ip::get_client_ip();
 	}
+
+	/* ─── Login Session & Remember Me ─── */
 
 	/**
-	 * Whether the given IP is a configured trusted reverse proxy.
+	 * Pre-select "Remember Me" on the WordPress login screen.
 	 *
-	 * Returns false by default. Register proxy IPs or CIDR ranges via:
-	 *   add_filter( 'wpepp_trusted_proxies', fn() => [ '173.245.48.0/20', ... ] );
-	 *
-	 * @param string $ip Direct peer IP (REMOTE_ADDR).
-	 * @return bool
+	 * Extends auth session persistence to 14 days and prevents accidental logouts
+	 * when closing the browser or restarting the computer.
 	 */
-	private static function is_trusted_proxy( $ip ) {
-		$proxies = apply_filters( 'wpepp_trusted_proxies', [] );
-		if ( empty( $proxies ) || ! is_array( $proxies ) ) {
-			return false;
+	public static function auto_check_remember_me() {
+		static $rendered = false;
+		if ( $rendered ) {
+			return;
 		}
-
-		foreach ( $proxies as $proxy ) {
-			$proxy = trim( (string) $proxy );
-			if ( '' === $proxy ) {
-				continue;
-			}
-			if ( false === strpos( $proxy, '/' ) ) {
-				if ( hash_equals( $proxy, $ip ) ) {
-					return true;
+		$rendered = true;
+		?>
+		<script>
+		(function(){
+			function checkRM() {
+				var rm = document.getElementById('rememberme');
+				if (rm && !rm.checked) {
+					rm.checked = true;
 				}
-				continue;
 			}
-			if ( self::ip_in_cidr( $ip, $proxy ) ) {
-				return true;
+			if (document.readyState === 'loading') {
+				document.addEventListener('DOMContentLoaded', checkRM);
+			} else {
+				checkRM();
 			}
-		}
-
-		return false;
+		})();
+		</script>
+		<?php
 	}
 
-	/* ─── Honeypot ─── */
+	/* â”€â”€â”€ Honeypot â”€â”€â”€ */
 
 	/**
 	 * Render an invisible honeypot field on the login form.
@@ -406,7 +770,7 @@ class WPEPP_Security {
 	}
 
 	/**
-	 * Check the honeypot field — if filled, reject.
+	 * Check the honeypot field â€” if filled, reject.
 	 *
 	 * @param \WP_User|\WP_Error|null $user Auth result.
 	 * @return \WP_User|\WP_Error|null
@@ -422,7 +786,7 @@ class WPEPP_Security {
 		return $user;
 	}
 
-	/* ─── XML-RPC ─── */
+	/* â”€â”€â”€ XML-RPC â”€â”€â”€ */
 
 	/**
 	 * Remove X-Pingback header.
@@ -435,10 +799,11 @@ class WPEPP_Security {
 		return $headers;
 	}
 
-	/* ─── REST User Enumeration ─── */
+	/* â”€â”€â”€ REST User Enumeration â”€â”€â”€ */
 
 	/**
-	 * Remove /wp/v2/users endpoints for non-admins.
+	 * Remove /wp/v2/users list/detail endpoints for non-admins while keeping
+	 * `/wp/v2/users/me` functional for authenticated subscribers (B14).
 	 *
 	 * @param array $endpoints REST endpoints.
 	 * @return array
@@ -449,6 +814,11 @@ class WPEPP_Security {
 		}
 
 		foreach ( $endpoints as $route => $data ) {
+			// Keep the /users/me endpoint â€” plugins/themes and app flows rely on it.
+			if ( preg_match( '#^/wp/v2/users/me$#', $route ) ) {
+				continue;
+			}
+
 			if ( preg_match( '#/wp/v2/users#', $route ) ) {
 				unset( $endpoints[ $route ] );
 			}
@@ -457,99 +827,120 @@ class WPEPP_Security {
 		return $endpoints;
 	}
 
-	/* ─── reCAPTCHA (Pro) ─── */
-
 	/**
-	 * Enqueue reCAPTCHA JS on login page.
+	 * Enqueue the bundled QR code library on profile screens.
+	 *
+	 * Loaded only where 2FA setup can render â€” never on frontend.
 	 */
-	public static function enqueue_recaptcha() {
-		$raw      = get_option( 'wpepp_security_settings', '{}' );
-		$settings = json_decode( $raw, true );
-
-		$site_key = sanitize_text_field( $settings['recaptcha_site_key'] ?? '' );
-		if ( empty( $site_key ) ) {
+	public static function enqueue_qr_library( $hook ) {
+		if ( ! in_array( $hook, [ 'profile.php', 'user-edit.php' ], true ) ) {
 			return;
 		}
 
 		wp_enqueue_script(
-			'wpepp-recaptcha',
-			'https://www.google.com/recaptcha/api.js',
+			'wpepp-qrcode',
+			WPEPP_URL . '/assets/js/qrcode.min.js',
 			[],
-			null,
+			'1.0.0',
 			true
 		);
 	}
 
-	/**
-	 * Render reCAPTCHA widget in login form.
-	 */
-	public static function render_recaptcha() {
-		$raw      = get_option( 'wpepp_security_settings', '{}' );
-		$settings = json_decode( $raw, true );
-		$site_key = sanitize_text_field( $settings['recaptcha_site_key'] ?? '' );
+	/* â”€â”€â”€ CAPTCHA â€” unified provider delegates â”€â”€â”€ */
 
-		if ( ! empty( $site_key ) ) {
-			echo '<div class="g-recaptcha" data-sitekey="' . esc_attr( $site_key ) . '"></div>';
-		}
+	/**
+	 * Render the active captcha widget on a public form.
+	 */
+	public static function render_captcha_widget() {
+		WPEPP_Captcha::render_widget();
 	}
 
 	/**
-	 * Verify reCAPTCHA response.
+	 * Verify the login-form challenge.
 	 *
 	 * @param \WP_User|\WP_Error|null $user Auth result.
 	 * @return \WP_User|\WP_Error|null
 	 */
-	public static function verify_recaptcha( $user ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Login form uses WP's own nonce.
-		if ( ! isset( $_POST['g-recaptcha-response'] ) || empty( $_POST['g-recaptcha-response'] ) ) {
-			return new \WP_Error(
-				'wpepp_recaptcha',
-				__( 'Please complete the reCAPTCHA challenge.', 'wp-edit-password-protected' )
-			);
-		}
-
-		$raw      = get_option( 'wpepp_security_settings', '{}' );
-		$settings = json_decode( $raw, true );
-		$secret   = sanitize_text_field( $settings['recaptcha_secret_key'] ?? '' );
-
-		if ( empty( $secret ) ) {
-			return $user;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$response = sanitize_text_field( wp_unslash( $_POST['g-recaptcha-response'] ) );
-
-		$result = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
-			'body' => [
-				'secret'   => $secret,
-				'response' => $response,
-				'remoteip' => self::get_client_ip(),
-			],
-		] );
+	public static function verify_captcha_on_login( $user ) {
+		$result = WPEPP_Captcha::verify();
 
 		if ( is_wp_error( $result ) ) {
-			// Fail closed — a network error must not bypass the challenge.
-			return new \WP_Error(
-				'wpepp_recaptcha',
-				__( 'Could not verify reCAPTCHA. Please try again.', 'wp-edit-password-protected' )
-			);
-		}
-
-		$body = json_decode( wp_remote_retrieve_body( $result ), true );
-		if ( empty( $body['success'] ) ) {
-			return new \WP_Error(
-				'wpepp_recaptcha',
-				__( 'reCAPTCHA verification failed.', 'wp-edit-password-protected' )
-			);
+			return $result;
 		}
 
 		return $user;
 	}
 
-	/* ─── Custom Login URL (Pro) ─── */
+	/**
+	 * Verify the registration-form challenge.
+	 *
+	 * @param \WP_Error $errors             Errors.
+	 * @param string    $sanitized_user_login Username.
+	 * @param string    $user_email           Email.
+	 * @return \WP_Error
+	 */
+	public static function verify_captcha_on_register( $errors, $sanitized_user_login, $user_email ) {
+		unset( $sanitized_user_login, $user_email );
+
+		$result = WPEPP_Captcha::verify();
+
+		if ( is_wp_error( $result ) ) {
+			$errors->add(
+				'wpepp_reg_captcha',
+				esc_html( $result->get_error_message() )
+			);
+		}
+
+		return $errors;
+	}
 
 	/**
-	 * Handle custom login URL — redirect default wp-login.php to 404.
+	 * Legacy reCAPTCHA render â€” deprecated delegate to the unified layer.
+	 *
+	 * @deprecated 3.1.0 Use WPEPP_Captcha::render_widget().
+	 */
+	public static function render_recaptcha() {
+		WPEPP_Captcha::render_widget();
+	}
+
+	/**
+	 * Legacy enqueue â€” deprecated no-op; scripts are handled by the provider.
+	 *
+	 * @deprecated 3.1.0
+	 */
+	public static function enqueue_recaptcha() {
+		// Intentionally empty â€” WPEPP_Captcha enqueues per-provider.
+	}
+
+	/**
+	 * Legacy verification â€” delegates to the unified layer.
+	 *
+	 * @deprecated 3.1.0 Use WPEPP_Captcha::verify().
+	 *
+	 * @param \WP_User|\WP_Error|null $user Auth result.
+	 * @return \WP_User|\WP_Error|null
+	 */
+	public static function verify_recaptcha( $user ) {
+		$result = WPEPP_Captcha::verify();
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return $user;
+	}
+
+	/* â”€â”€â”€ Custom Login URL (Pro) â”€â”€â”€ */
+
+	/**
+	 * Cookie name for the login-access challenge.
+	 *
+	 * @var string
+	 */
+	const GATE_COOKIE = 'wpepp_gate';
+
+	/**
+	 * Handle custom login URL â€” redirect default wp-login.php to 404.
 	 */
 	public static function handle_custom_login_url() {
 		$raw      = get_option( 'wpepp_security_settings', '{}' );
@@ -575,6 +966,8 @@ class WPEPP_Security {
 
 		// If visiting the custom login slug, show login page.
 		if ( $path === $slug ) {
+			self::send_gate_cookie();
+
 			// Initialize variables that wp-login.php expects.
 			global $user_login, $error, $interim_login, $action;
 			$user_login   = '';
@@ -585,34 +978,103 @@ class WPEPP_Security {
 			exit;
 		}
 
-		// Block direct access to wp-login.php (except POST for login processing).
+		// Block direct access to wp-login.php (except gated POST / required actions).
 		if ( 'wp-login.php' === basename( $path ) ) {
-			$method = isset( $_SERVER['REQUEST_METHOD'] )
-				? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) )
-				: 'GET';
-
-			// Allow POST requests (form submissions) and requests with action=postpass (password form).
-			if ( 'POST' === $method ) {
+			if ( self::allow_wp_login_request() ) {
 				return;
 			}
 
-			// Allow specific actions that need to work.
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
-			$allowed_actions = [ 'postpass', 'logout', 'rp', 'resetpass', 'confirmaction' ];
-			if ( in_array( $action, $allowed_actions, true ) ) {
-				return;
-			}
-
-			// Defer 404 to template_redirect so theme templates load
-			// after wp_loaded (avoids WooCommerce get_cart errors).
-			add_action( 'template_redirect', static function () {
-				status_header( 404 );
-				nocache_headers();
-				include get_query_template( '404' );
-				exit;
-			}, 0 );
+			// wp-login.php never reaches template_redirect â€” die here.
+			status_header( 404 );
+			nocache_headers();
+			wp_die(
+				esc_html__( 'Page not found.', 'wp-edit-password-protected' ),
+				esc_html__( '404 Not Found', 'wp-edit-password-protected' ),
+				[ 'response' => 404 ]
+			);
 		}
+	}
+
+	/**
+	 * Whether a request hitting wp-login.php directly should be allowed while
+	 * the login page is hidden/renamed (B6).
+	 *
+	 * Rules:
+	 *   - Required workflow actions (postpass/logout/reset/etc.) always pass.
+	 *   - Plain POST logins must carry the challenge cookie issued on a prior
+	 *     visit to the real login URL â€” blocks off-site brute force bots.
+	 *   - Everything else falls through to the caller's 404 handling.
+	 *
+	 * @return bool True when the caller must NOT 404 this request.
+	 */
+	private static function allow_wp_login_request() {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- public login workflows use WP's own nonces.
+		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+		$method = isset( $_SERVER['REQUEST_METHOD'] )
+			? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) )
+			: 'GET';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+		// Actions that must always work regardless of hiding.
+		$allowed_actions = [ 'postpass', 'logout', 'rp', 'resetpass', 'confirmaction' ];
+		if ( '' !== $action && in_array( $action, $allowed_actions, true ) ) {
+			return true;
+		}
+
+		if ( 'POST' === $method ) {
+			// Bare login POST without the challenge cookie â†’ treat as bot traffic.
+			return self::gate_cookie_valid();
+		}
+
+		return false;
+	}
+
+	/**
+	 * Issue the login-gate challenge cookie (30 days).
+	 */
+	private static function send_gate_cookie() {
+		if ( headers_sent() ) {
+			return;
+		}
+
+		setcookie(
+			self::GATE_COOKIE,
+			self::gate_token(),
+			time() + 30 * DAY_IN_SECONDS,
+			COOKIEPATH,
+			COOKIE_DOMAIN,
+			is_ssl(),
+			true
+		);
+
+		// Make it readable on this very request too.
+		$_COOKIE[ self::GATE_COOKIE ] = self::gate_token(); // phpcs:ignore WordPress.SuperGlobalInputUsage.AccessDetected -- setting our own plugin cookie.
+	}
+
+	/**
+	 * Stateless gate token value â€” derived from site salts, not forgeable
+	 * without AUTH_KEY/LOGGED_IN_SALT access.
+	 *
+	 * @return string
+	 */
+	private static function gate_token() {
+		return wp_hash( 'wpepp-login-gate-v1|' . home_url() );
+	}
+
+	/**
+	 * Whether the current request carries a valid gate cookie.
+	 *
+	 * @return bool
+	 */
+	private static function gate_cookie_valid() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- challenge marker, not a nonce.
+		if ( empty( $_COOKIE[ self::GATE_COOKIE ] ) ) {
+			return false;
+		}
+
+		$value = sanitize_text_field( wp_unslash( $_COOKIE[ self::GATE_COOKIE ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		return hash_equals( self::gate_token(), $value );
 	}
 
 	/**
@@ -663,16 +1125,38 @@ class WPEPP_Security {
 		return str_replace( 'wp-login.php', $slug, $location );
 	}
 
-	/* ─── Hide Login Page (Free) ─── */
+	/* â”€â”€â”€ Hide Login Page (Free) â”€â”€â”€ */
 
 	/**
-	 * Hide wp-login.php and wp-admin — return 404 for direct access.
+	 * Hide wp-login.php and wp-admin â€” return 404 for direct access.
 	 * When a Custom Login URL is set, only that slug can access the login form.
 	 */
 	public static function handle_hide_login_page() {
-		// Skip for logged-in users — they need wp-admin access.
-		if ( is_user_logged_in() ) {
+		// Emergency Safe Mode bypass
+		if ( self::is_safe_mode() ) {
 			return;
+		}
+
+		$raw      = get_option( 'wpepp_security_settings', '{}' );
+		$settings = json_decode( $raw, true );
+		$settings = is_array( $settings ) ? $settings : [];
+
+		// If no custom login slug is configured, do not hide wp-login.php (prevents accidental total lockout).
+		$custom_slug = sanitize_title( $settings['custom_login_url'] ?? '' );
+		if ( empty( $custom_slug ) ) {
+			return;
+		}
+
+		// Skip for logged-in users — they need wp-admin access.
+		// Configurable via `hide_login_exempt_logged_in` (default: true).
+		if ( is_user_logged_in() ) {
+			$exempt_logged_in = array_key_exists( 'hide_login_exempt_logged_in', $settings )
+				? filter_var( $settings['hide_login_exempt_logged_in'], FILTER_VALIDATE_BOOLEAN )
+				: true;
+
+			if ( $exempt_logged_in || current_user_can( 'manage_options' ) ) {
+				return;
+			}
 		}
 
 		$request = isset( $_SERVER['REQUEST_URI'] )
@@ -696,23 +1180,9 @@ class WPEPP_Security {
 			return;
 		}
 
-		// Allow POST to wp-login.php (form submissions from our custom slug).
-		if ( $is_login ) {
-			$method = isset( $_SERVER['REQUEST_METHOD'] )
-				? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) )
-				: 'GET';
-
-			if ( 'POST' === $method ) {
-				return;
-			}
-
-			// Allow specific actions that need wp-login.php.
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$action          = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
-			$allowed_actions = [ 'postpass', 'logout', 'rp', 'resetpass', 'confirmaction' ];
-			if ( in_array( $action, $allowed_actions, true ) ) {
-				return;
-			}
+		// Gate POST + workflow actions through the shared challenge logic (B6).
+		if ( $is_login && self::allow_wp_login_request() ) {
+			return;
 		}
 
 		// Allow AJAX and admin-post.php inside wp-admin.
@@ -746,7 +1216,7 @@ class WPEPP_Security {
 		}, 0 );
 	}
 
-	/* ─── After Login Redirect (Free) ─── */
+	/* â”€â”€â”€ After Login Redirect (Free) â”€â”€â”€ */
 
 	/**
 	 * Redirect users to a custom URL after login.
@@ -805,10 +1275,10 @@ class WPEPP_Security {
 		return $hosts;
 	}
 
-	/* ─── Auto Login Token (Free) ─── */
+	/* â”€â”€â”€ Auto Login Token (Free) â”€â”€â”€ */
 
 	/**
-	 * Handle auto-login token — validate and log user in.
+	 * Handle auto-login token â€” validate and log user in.
 	 */
 	public static function handle_auto_login_token() {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -832,7 +1302,7 @@ class WPEPP_Security {
 			);
 		}
 
-		// Rate limit token guessing — max 10 attempts per IP per 15 minutes.
+		// Rate limit token guessing â€” max 10 attempts per IP per 15 minutes.
 		$rl_key   = 'wpepp_autologin_rl_' . md5( self::get_client_ip() );
 		$attempts = (int) get_transient( $rl_key );
 		if ( $attempts >= 10 ) {
@@ -863,14 +1333,31 @@ class WPEPP_Security {
 			update_option( 'wpepp_auto_login_links', $links, false );
 		}
 
-		$found = null;
+		$token_hash  = hash( 'sha256', $token );
+		$found       = null;
 		$found_index = null;
+		$needs_save  = false;
+
 		foreach ( $links as $index => $link ) {
-			if ( hash_equals( $link['token'], $token ) ) {
+			if ( ! empty( $link['token_hash'] ) && hash_equals( $link['token_hash'], $token_hash ) ) {
 				$found       = $link;
 				$found_index = $index;
 				break;
 			}
+			if ( ! empty( $link['token'] ) && hash_equals( $link['token'], $token ) ) {
+				$found       = $link;
+				$found_index = $index;
+				// Migrate legacy plaintext token to hash + encrypted.
+				$links[ $index ]['token_hash']      = $token_hash;
+				$links[ $index ]['token_encrypted'] = self::encrypt_token( $token );
+				unset( $links[ $index ]['token'] );
+				$needs_save = true;
+				break;
+			}
+		}
+
+		if ( $needs_save ) {
+			update_option( 'wpepp_auto_login_links', $links, false );
 		}
 
 		if ( ! $found ) {
@@ -881,7 +1368,7 @@ class WPEPP_Security {
 			);
 		}
 
-		// Check expiration (Pro condition — stored at creation time).
+		// Check expiration (Pro condition â€” stored at creation time).
 		if ( ! empty( $found['expires_at'] ) && time() > (int) $found['expires_at'] ) {
 			wp_die(
 				esc_html__( 'This auto-login link has expired.', 'wp-edit-password-protected' ),
@@ -890,7 +1377,7 @@ class WPEPP_Security {
 			);
 		}
 
-		// Check max uses (Pro condition — stored at creation time).
+		// Check max uses (Pro condition â€” stored at creation time).
 		if ( ! empty( $found['max_uses'] ) && (int) $found['use_count'] >= (int) $found['max_uses'] ) {
 			wp_die(
 				esc_html__( 'This auto-login link has reached its maximum number of uses.', 'wp-edit-password-protected' ),
@@ -909,7 +1396,7 @@ class WPEPP_Security {
 			);
 		}
 
-		// Check role restriction (Pro condition — stored at creation time).
+		// Check role restriction (Pro condition â€” stored at creation time).
 		if ( ! empty( $found['role_restriction'] ) ) {
 			if ( ! in_array( $found['role_restriction'], (array) $user->roles, true ) ) {
 				wp_die(
@@ -927,6 +1414,7 @@ class WPEPP_Security {
 		// Log the user in.
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Trigger core WordPress login hook.
 		do_action( 'wp_login', $user->user_login, $user );
 
 		// Redirect.
@@ -935,11 +1423,69 @@ class WPEPP_Security {
 		exit;
 	}
 
-	/* ═══════════════════════════════════════════════════════════════
-	 *  Registration Protection
-	 * ═══════════════════════════════════════════════════════════════ */
+	/**
+	 * Get the secret 256-bit encryption key derived from WordPress salt.
+	 *
+	 * @return string Binary 32-byte key.
+	 */
+	private static function get_encryption_key() {
+		$salt = function_exists( 'wp_salt' )
+			? wp_salt( 'auth' )
+			: ( defined( 'AUTH_SALT' ) ? AUTH_SALT : 'wpepp_default_token_encryption_salt' );
+		return hash( 'sha256', (string) $salt, true );
+	}
 
-	/* ─── Registration Honeypot (Free) ─── */
+	/**
+	 * Encrypt a sensitive token using the WordPress auth salt.
+	 *
+	 * @param string $token Plaintext token.
+	 * @return string Encrypted token string.
+	 */
+	public static function encrypt_token( $token ) {
+		if ( empty( $token ) ) {
+			return '';
+		}
+		if ( ! function_exists( 'openssl_encrypt' ) ) {
+			return 'b64:' . base64_encode( $token );
+		}
+		$key = self::get_encryption_key();
+		$iv  = openssl_random_pseudo_bytes( 16 );
+		$enc = openssl_encrypt( $token, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
+		return 'enc:' . base64_encode( $iv . $enc );
+	}
+
+	/**
+	 * Decrypt an encrypted token.
+	 *
+	 * @param string $ciphertext Encrypted string.
+	 * @return string Decrypted plaintext token.
+	 */
+	public static function decrypt_token( $ciphertext ) {
+		if ( empty( $ciphertext ) || ! is_string( $ciphertext ) ) {
+			return '';
+		}
+		if ( 0 === strpos( $ciphertext, 'b64:' ) ) {
+			return (string) base64_decode( substr( $ciphertext, 4 ), true );
+		}
+		if ( 0 === strpos( $ciphertext, 'enc:' ) ) {
+			$raw = base64_decode( substr( $ciphertext, 4 ), true );
+			if ( ! $raw || strlen( $raw ) < 17 || ! function_exists( 'openssl_decrypt' ) ) {
+				return '';
+			}
+			$iv  = substr( $raw, 0, 16 );
+			$enc = substr( $raw, 16 );
+			$key = self::get_encryption_key();
+			$dec = openssl_decrypt( $enc, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
+			return false !== $dec ? $dec : '';
+		}
+		return $ciphertext; // Legacy raw token fallback.
+	}
+
+	/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+	 *  Registration Protection
+	 * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+	/* â”€â”€â”€ Registration Honeypot (Free) â”€â”€â”€ */
 
 	/**
 	 * Render honeypot field on the registration form.
@@ -970,7 +1516,7 @@ class WPEPP_Security {
 		return $errors;
 	}
 
-	/* ─── Registration Rate Limiter (Free) ─── */
+	/* â”€â”€â”€ Registration Rate Limiter (Free) â”€â”€â”€ */
 
 	/**
 	 * Limit registration attempts per IP.
@@ -1003,61 +1549,8 @@ class WPEPP_Security {
 		return $errors;
 	}
 
-	/* ─── reCAPTCHA on Registration (Pro) ─── */
 
-	/**
-	 * Verify reCAPTCHA on the registration form.
-	 *
-	 * @param \WP_Error $errors             Registration errors.
-	 * @param string    $sanitized_user_login Username.
-	 * @param string    $user_email           Email address.
-	 * @return \WP_Error
-	 */
-	public static function check_reg_recaptcha( $errors, $sanitized_user_login, $user_email ) {
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		if ( ! isset( $_POST['g-recaptcha-response'] ) || empty( $_POST['g-recaptcha-response'] ) ) {
-			$errors->add(
-				'wpepp_reg_recaptcha',
-				__( '<strong>Error:</strong> Please complete the reCAPTCHA challenge.', 'wp-edit-password-protected' )
-			);
-			return $errors;
-		}
-
-		$raw    = get_option( 'wpepp_security_settings', '{}' );
-		$s      = json_decode( $raw, true );
-		$secret = sanitize_text_field( $s['recaptcha_secret_key'] ?? '' );
-
-		if ( empty( $secret ) ) {
-			return $errors;
-		}
-
-		// phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$response = sanitize_text_field( wp_unslash( $_POST['g-recaptcha-response'] ) );
-
-		$result = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
-			'body' => [
-				'secret'   => $secret,
-				'response' => $response,
-				'remoteip' => self::get_client_ip(),
-			],
-		] );
-
-		if ( is_wp_error( $result ) ) {
-			return $errors; // Fail open on network error.
-		}
-
-		$body = json_decode( wp_remote_retrieve_body( $result ), true );
-		if ( empty( $body['success'] ) ) {
-			$errors->add(
-				'wpepp_reg_recaptcha',
-				__( '<strong>Error:</strong> reCAPTCHA verification failed.', 'wp-edit-password-protected' )
-			);
-		}
-
-		return $errors;
-	}
-
-	/* ─── Disposable Email Blocker (Pro) ─── */
+	/* â”€â”€â”€ Disposable Email Blocker (Pro) â”€â”€â”€ */
 
 	/**
 	 * Block registration from disposable/temporary email domains.
@@ -1091,7 +1584,7 @@ class WPEPP_Security {
 	 *
 	 * @return array
 	 */
-	private static function get_disposable_email_domains() {
+	public static function get_disposable_email_domains() {
 		return [
 			'mailinator.com', 'guerrillamail.com', 'guerrillamail.info', 'guerrillamail.net',
 			'guerrillamail.org', 'guerrillamail.de', 'grr.la', 'guerrillamailblock.com',
@@ -1151,7 +1644,7 @@ class WPEPP_Security {
 		];
 	}
 
-	/* ─── Email Domain Whitelist / Blacklist (Pro) ─── */
+	/* â”€â”€â”€ Email Domain Whitelist / Blacklist (Pro) â”€â”€â”€ */
 
 	/**
 	 * Check email domain against whitelist or blacklist.
@@ -1199,7 +1692,7 @@ class WPEPP_Security {
 		return $errors;
 	}
 
-	/* ─── Admin Approval for New Users (Pro) ─── */
+	/* â”€â”€â”€ Admin Approval for New Users (Pro) â”€â”€â”€ */
 
 	/**
 	 * Set new users to a pending role until admin approves.
@@ -1296,9 +1789,9 @@ class WPEPP_Security {
 		wp_mail( $admin_email, $subject, $message );
 	}
 
-	/* ═══════════════════════════════════════════════════════════════
+	/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 	 *  Two-Factor Authentication (Pro)
-	 * ═══════════════════════════════════════════════════════════════ */
+	 * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 	/**
 	 * Render the 2FA code field on the login form.
@@ -1321,7 +1814,7 @@ class WPEPP_Security {
 	/**
 	 * Verify 2FA code during authentication.
 	 *
-	 * This runs at priority 99 — after WordPress has validated username/password.
+	 * This runs at priority 99 â€” after WordPress has validated username/password.
 	 *
 	 * @param \WP_User|\WP_Error|null $user     Auth result.
 	 * @param string                  $username  Username.
@@ -1342,9 +1835,37 @@ class WPEPP_Security {
 			return $user;
 		}
 
-		// If the user hasn't set up 2FA yet, allow login but they should set it up.
+		// If the user hasn't set up 2FA yet, check enforcement rules.
 		if ( ! WPEPP_TOTP::is_user_enabled( $user->ID ) ) {
+			$enforce_strict = ! empty( $settings['two_factor_strict'] );
+			$grace_days     = isset( $settings['two_factor_grace_days'] ) ? absint( $settings['two_factor_grace_days'] ) : 0;
+
+			if ( $enforce_strict || $grace_days > 0 ) {
+				$registered = strtotime( $user->user_registered );
+				$deadline   = $registered + ( $grace_days * DAY_IN_SECONDS );
+				if ( $enforce_strict || time() > $deadline ) {
+					return new \WP_Error(
+						'wpepp_2fa_setup_required',
+						__( '<strong>Error:</strong> Two-Factor Authentication is required for your role. Please contact an administrator to complete setup.', 'wp-edit-password-protected' )
+					);
+				}
+			}
 			return $user;
+		}
+
+		// Trusted device cookie — skip the code challenge entirely.
+		if ( WPEPP_TOTP::has_valid_remember( $user->ID ) ) {
+			return $user;
+		}
+
+		// Throttle TOTP guesses per account (max 5 failed attempts per 15 min).
+		$rl_key   = 'wpepp_totp_fail_' . $user->ID;
+		$attempts = (int) get_transient( $rl_key );
+		if ( $attempts >= 5 ) {
+			return new \WP_Error(
+				'wpepp_2fa_locked',
+				__( '<strong>Error:</strong> Too many failed two-factor authentication attempts. Please try again in 15 minutes.', 'wp-edit-password-protected' )
+			);
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Login form uses WP's own nonce.
@@ -1364,13 +1885,20 @@ class WPEPP_Security {
 
 		// Try TOTP code first.
 		if ( WPEPP_TOTP::verify_code( $secret, $code ) ) {
+			delete_transient( $rl_key );
+			WPEPP_TOTP::issue_remember_token( $user->ID );
 			return $user;
 		}
 
 		// Try recovery code.
 		if ( WPEPP_TOTP::verify_recovery_code( $user->ID, $code ) ) {
+			delete_transient( $rl_key );
+			WPEPP_TOTP::issue_remember_token( $user->ID );
 			return $user;
 		}
+
+		// Failed attempt — record hit.
+		set_transient( $rl_key, $attempts + 1, 15 * MINUTE_IN_SECONDS );
 
 		return new \WP_Error(
 			'wpepp_2fa_invalid',
@@ -1424,13 +1952,23 @@ class WPEPP_Security {
 							update_user_meta( $user->ID, '_wpepp_2fa_pending_secret', $pending );
 						}
 
-						$uri    = WPEPP_TOTP::get_provisioning_uri( $pending, $user->user_email );
-						$qr_url = WPEPP_TOTP::get_qr_code_url( $uri );
+						$uri = WPEPP_TOTP::get_provisioning_uri( $pending, $user->user_email );
 						?>
 						<br>
 						<h3><?php esc_html_e( 'Setup', 'wp-edit-password-protected' ); ?></h3>
 						<p><?php esc_html_e( '1. Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):', 'wp-edit-password-protected' ); ?></p>
-						<img src="<?php echo esc_url( $qr_url ); ?>" alt="<?php esc_attr_e( '2FA QR Code', 'wp-edit-password-protected' ); ?>" width="200" height="200" style="border: 1px solid #ddd; padding: 8px;">
+						<div id="wpepp-2fa-qr" style="border: 1px solid #ddd; padding: 8px; width: fit-content; background: #fff;" data-uri="<?php echo esc_attr( $uri ); ?>"></div>
+						<script>
+						(function(){
+							function wpeppDraw2FAQR(){
+								var el=document.getElementById('wpepp-2fa-qr');
+								if(!el||!window.QRCode){setTimeout(wpeppDraw2FAQR,150);return;}
+								el.innerHTML='';
+								new QRCode(el,{text:el.getAttribute('data-uri'),width:200,height:200,correctLevel:QRCode.CorrectLevel.M});
+							}
+							wpeppDraw2FAQR();
+						})();
+						</script>
 						<p><strong><?php esc_html_e( 'Manual key:', 'wp-edit-password-protected' ); ?></strong> <code><?php echo esc_html( $pending ); ?></code></p>
 						<p><?php esc_html_e( '2. Enter the 6-digit code from your authenticator app to verify:', 'wp-edit-password-protected' ); ?></p>
 						<input type="text" name="wpepp_2fa_verify_code" value="" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" size="10" placeholder="<?php esc_attr_e( '6-digit code', 'wp-edit-password-protected' ); ?>">
@@ -1457,11 +1995,10 @@ class WPEPP_Security {
 		// Disable 2FA.
 		if ( ! empty( $_POST['wpepp_disable_2fa'] ) ) {
 			WPEPP_TOTP::disable_for_user( $user_id );
-			// phpcs:enable WordPress.Security.NonceVerification.Missing
 			return;
 		}
 
-		// Enable 2FA — verify the setup code.
+		// Enable 2FA â€” verify the setup code.
 		if ( ! empty( $_POST['wpepp_2fa_verify_code'] ) ) {
 			$code   = sanitize_text_field( wp_unslash( $_POST['wpepp_2fa_verify_code'] ) );
 			$secret = get_user_meta( $user_id, '_wpepp_2fa_pending_secret', true );
@@ -1471,31 +2008,24 @@ class WPEPP_Security {
 			}
 
 			if ( WPEPP_TOTP::verify_code( $secret, $code ) ) {
-				$recovery_codes = WPEPP_TOTP::enable_for_user( $user_id, $secret );
+				WPEPP_TOTP::enable_for_user( $user_id, $secret );
 				delete_user_meta( $user_id, '_wpepp_2fa_pending_secret' );
-
-				// Store recovery codes temporarily so we can show them once.
-				set_transient(
-					'wpepp_2fa_recovery_' . $user_id,
-					$recovery_codes,
-					5 * MINUTE_IN_SECONDS
-				);
 			}
 		}
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 	}
 
-	/* ═══════════════════════════════════════════════════════════════
+	/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 	 *  IP Management (Pro)
-	 * ═══════════════════════════════════════════════════════════════ */
+	 * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 	/**
 	 * Check if the current IP is blocked (runs on init, priority 1).
-	 * Also checks allowlist — if IP is on allowlist, skip all security checks.
+	 * Also checks allowlist â€” if IP is on allowlist, skip all security checks.
 	 */
 	public static function check_ip_blocklist() {
-		// Don't block admin-ajax, REST, or cron requests.
-		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+		// Don't block background WP-Cron or CLI tasks.
+		if ( wp_doing_cron() || ( defined( 'WP_CLI' ) && WP_CLI ) ) {
 			return;
 		}
 
@@ -1503,7 +2033,7 @@ class WPEPP_Security {
 		$raw      = get_option( 'wpepp_security_settings', '{}' );
 		$settings = json_decode( $raw, true );
 
-		// Check allowlist first — if IP is allowed, let everything through.
+		// Check allowlist first â€” if IP is allowed, let everything through.
 		if ( self::is_ip_in_list( $ip, $settings['ip_allowlist'] ?? '' ) ) {
 			return;
 		}
@@ -1595,6 +2125,10 @@ class WPEPP_Security {
 	 * @return bool
 	 */
 	private static function ip_in_cidr( $ip, $cidr ) {
+		if ( class_exists( 'WPEPP_Core_Ip' ) ) {
+			return WPEPP_Core_Ip::ip_in_cidr( $ip, $cidr );
+		}
+
 		list( $range_ip, $prefix ) = array_pad( explode( '/', $cidr, 2 ), 2, '32' );
 
 		$ip_long    = ip2long( $ip );
@@ -1609,9 +2143,42 @@ class WPEPP_Security {
 		return ( $ip_long & $mask ) === ( $range_long & $mask );
 	}
 
-	/* ═══════════════════════════════════════════════════════════════
+	/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 	   AI Crawler Blocker
-	   ═══════════════════════════════════════════════════════════════ */
+	   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+	/**
+	 * Batch-increment the AI-block counter.
+	 *
+	 * Hits accumulate in an object-cache/transient bucket and flush to the
+	 * option every 25 blocks or 10 minutes â€” whichever comes first. Keeps bot
+	 * floods from writing to wp_options on every request.
+	 */
+	private static function bump_ai_blocked_count() {
+		$bucket_key = 'wpepp_ai_block_bucket';
+
+		$bucket = wp_cache_get( $bucket_key, 'wpepp' );
+		if ( false === $bucket ) {
+			$bucket = get_transient( $bucket_key );
+			if ( false === $bucket || ! is_array( $bucket ) ) {
+				$bucket = [ 'count' => 0, 'started' => time() ];
+			}
+		}
+
+		$bucket['count']++;
+
+		if ( $bucket['count'] >= 25 || ( time() - (int) $bucket['started'] ) >= 10 * MINUTE_IN_SECONDS ) {
+			$total = (int) get_option( 'wpepp_ai_crawler_blocked_count', 0 );
+			update_option( 'wpepp_ai_crawler_blocked_count', $total + (int) $bucket['count'], false );
+
+			wp_cache_delete( $bucket_key, 'wpepp' );
+			delete_transient( $bucket_key );
+			return;
+		}
+
+		set_transient( $bucket_key, $bucket, 10 * MINUTE_IN_SECONDS );
+		wp_cache_set( $bucket_key, $bucket, 'wpepp', 10 * MINUTE_IN_SECONDS );
+	}
 
 	/**
 	 * Known AI crawler bot identifiers.
@@ -1657,7 +2224,7 @@ class WPEPP_Security {
 
 		$selected = isset( $settings['ai_crawler_bots'] ) ? $settings['ai_crawler_bots'] : null;
 
-		// null = never configured → block all known bots.
+		// null = never configured â†’ block all known bots.
 		if ( ! is_array( $selected ) ) {
 			return array_keys( self::get_known_ai_bots() );
 		}
@@ -1667,7 +2234,7 @@ class WPEPP_Security {
 			return [];
 		}
 
-		// Sanitise — only allow values that match known keys.
+		// Sanitise â€” only allow values that match known keys.
 		$known = array_keys( self::get_known_ai_bots() );
 		return array_values( array_intersect( $selected, $known ) );
 	}
@@ -1690,7 +2257,7 @@ class WPEPP_Security {
 			return $output;
 		}
 
-		$output .= "\n# AI Crawler Blocker — added by WPEPP\n";
+		$output .= "\n# AI Crawler Blocker â€” added by WPEPP\n";
 
 		foreach ( $bots as $bot ) {
 			$bot     = preg_replace( '/[^a-zA-Z0-9_\-]/', '', $bot ); // Sanitise for robots.txt.
@@ -1701,7 +2268,7 @@ class WPEPP_Security {
 	}
 
 	/**
-	 * Block AI crawlers by HTTP User-Agent — returns 403.
+	 * Block AI crawlers by HTTP User-Agent â€” returns 403.
 	 *
 	 * Hooked to `init` at priority 0.
 	 */
@@ -1739,9 +2306,8 @@ class WPEPP_Security {
 		foreach ( $bots as $bot ) {
 			$bot_safe = preg_quote( strtolower( trim( $bot ) ), '/' );
 			if ( ! empty( $bot_safe ) && preg_match( '/' . $bot_safe . '/i', $ua_lower ) ) {
-				// Increment block counter for dashboard stats.
-				$count = (int) get_option( 'wpepp_ai_crawler_blocked_count', 0 );
-				update_option( 'wpepp_ai_crawler_blocked_count', $count + 1, false );
+				// Batch the block counter â€” no DB write per blocked hit (B12).
+				self::bump_ai_blocked_count();
 
 				status_header( 403 );
 				nocache_headers();
